@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg:       #0f0f0f;
+  --surface:  #181818;
+  --surface2: #202020;
+  --surface3: #282828;
+  --border:   #2a2a2a;
+  --border2:  #333;
+  --text:     #f0f0f0;
+  --text2:    #a0a0a0;
+  --text3:    #666;
+  --green:    #22c55e;
+  --green-dim:#16a34a;
+  --green-bg: rgba(34,197,94,.1);
+  --green-bd: rgba(34,197,94,.2);
+  --blue:     #3b82f6;
+  --amber:    #f59e0b;
+  --red:      #ef4444;
+  --purple:   #a855f7;
+  --sidebar:  220px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Geist', 'Inter', -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  /* ── Buttons ── */
+  .btn         { @apply inline-flex items-center gap-2 px-4 py-2 rounded-[8px] text-[13px] font-semibold cursor-pointer transition-all duration-150 border-none; }
+  .btn-sm      { @apply px-3 py-1.5 text-xs; }
+  .btn-primary { @apply bg-[#22c55e] text-white hover:bg-[#16a34a]; }
+  .btn-ghost   { @apply bg-[#202020] text-[#f0f0f0] border border-[#333] hover:bg-[#282828]; }
+  .btn-danger  { @apply bg-[rgba(239,68,68,.1)] text-[#ef4444] border border-[rgba(239,68,68,.2)] hover:bg-[rgba(239,68,68,.2)]; }
+  .btn-wa      { @apply bg-[rgba(37,211,102,.15)] text-[#25D366] border border-[rgba(37,211,102,.25)] hover:bg-[rgba(37,211,102,.25)]; }
+
+  /* ── Cards ── */
+  .card        { @apply bg-[#181818] border border-[#2a2a2a] rounded-[10px] overflow-hidden; }
+  .card-header { @apply px-5 py-4 border-b border-[#2a2a2a] flex items-center justify-between; }
+  .card-title  { @apply text-sm font-semibold text-[#f0f0f0]; }
+  .card-body   { @apply p-5; }
+
+  /* ── Form inputs ── */
+  .input    { @apply w-full bg-[#202020] border border-[#333] rounded-[8px] px-3.5 py-2.5 text-[13px] text-[#f0f0f0] placeholder-[#666] outline-none transition-colors focus:border-[#22c55e]; }
+  .label    { @apply block text-[11px] font-semibold uppercase tracking-wider text-[#a0a0a0] mb-1.5; }
+  .select   { @apply input cursor-pointer appearance-none; }
+  .textarea { @apply input resize-none min-h-[80px]; }
+
+  /* ── Badges ── */
+  .badge        { @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold; }
+  .badge-green  { @apply bg-[rgba(34,197,94,.1)] text-[#22c55e] border border-[rgba(34,197,94,.2)]; }
+  .badge-blue   { @apply bg-[rgba(59,130,246,.1)] text-[#3b82f6] border border-[rgba(59,130,246,.2)]; }
+  .badge-amber  { @apply bg-[rgba(245,158,11,.1)] text-[#f59e0b] border border-[rgba(245,158,11,.2)]; }
+  .badge-red    { @apply bg-[rgba(239,68,68,.1)] text-[#ef4444] border border-[rgba(239,68,68,.2)]; }
+  .badge-purple { @apply bg-[rgba(168,85,247,.1)] text-[#a855f7] border border-[rgba(168,85,247,.2)]; }
+  .badge-grey   { @apply bg-[#202020] text-[#a0a0a0] border border-[#333]; }
+
+  /* ── Table ── */
+  .tbl      { @apply w-full border-collapse; }
+  .tbl th   { @apply text-[11px] font-semibold uppercase tracking-wider text-[#666] px-4 py-2.5 text-left border-b border-[#2a2a2a] whitespace-nowrap; }
+  .tbl td   { @apply px-4 py-3 border-b border-[#2a2a2a] text-[13px] text-[#a0a0a0]; }
+  .tbl tr:last-child td { @apply border-b-0; }
+  .tbl tr:hover td { @apply bg-[#202020] text-[#f0f0f0]; }
+  .tbl .td-main { @apply text-[#f0f0f0] font-medium; }
+
+  /* ── Nav item ── */
+  .nav-item        { @apply flex items-center gap-2.5 px-2.5 py-2 rounded-[8px] text-[13.5px] font-medium text-[#a0a0a0] cursor-pointer transition-all select-none; }
+  .nav-item:hover  { @apply bg-[#202020] text-[#f0f0f0]; }
+  .nav-item.active { @apply bg-[rgba(34,197,94,.1)] text-[#22c55e] border border-[rgba(34,197,94,.2)]; }
+
+  /* ── Stat card ── */
+  .stat-card { @apply card p-6 relative overflow-hidden hover:border-[#333] transition-colors; }
+  .stat-card::before { content: ''; @apply absolute top-0 left-0 right-0 h-0.5; }
+  .stat-card.c-green::before { @apply bg-[#22c55e]; }
+  .stat-card.c-blue::before  { @apply bg-[#3b82f6]; }
+  .stat-card.c-amber::before { @apply bg-[#f59e0b]; }
+  .stat-card.c-purple::before{ @apply bg-[#a855f7]; }
+
+  /* ── Toggle ── */
+  .toggle     { @apply relative w-10 h-[22px] bg-[#282828] rounded-full cursor-pointer transition-colors; }
+  .toggle.on  { @apply bg-[#22c55e]; }
+  .toggle::after { content: ''; @apply absolute top-[3px] left-[3px] w-4 h-4 bg-white rounded-full transition-all; }
+  .toggle.on::after { @apply left-[21px]; }
+
+  /* ── Modal ── */
+  .modal-overlay { @apply fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4; }
+  .modal         { @apply bg-[#181818] border border-[#2a2a2a] rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
