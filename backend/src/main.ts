@@ -20,9 +20,22 @@ async function bootstrap() {
   app.use(helmet());
   app.use(compression());
 
-  // CORS — only allow admin frontend
+  // CORS — allow admin frontend (production, Vercel previews, local)
+  const allowedOrigins = [
+    frontendUrl,
+    'https://admin.thefamgroup.uk',
+    'https://admin-l3hf5qagg-thefamgroup-s-projects.vercel.app',
+    'http://localhost:3001',
+  ].filter(Boolean)
+
   app.enableCors({
-    origin: [frontendUrl, 'http://localhost:3001'],
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || /\.vercel\.app$/.test(origin)) {
+        callback(null, true)
+      } else {
+        callback(new Error(`CORS: ${origin} not allowed`))
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
