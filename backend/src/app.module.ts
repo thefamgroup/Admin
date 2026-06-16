@@ -28,9 +28,7 @@ import { SettingsModule } from './modules/settings/settings.module';
         autoLoadEntities: true,
         synchronize: config.get('NODE_ENV') !== 'production', // never in prod
         logging: config.get('NODE_ENV') === 'development',
-        ssl: config.get('NODE_ENV') === 'production'
-          ? { rejectUnauthorized: false }
-          : false,
+        ssl: { rejectUnauthorized: false },
       }),
     }),
 
