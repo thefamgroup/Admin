@@ -20,7 +20,7 @@ export class DashboardService {
     const [bookingStats, quoteStats, leadStats, unreadMessages, teamStats] = await Promise.all([
       this.bookings.getStats(),
       this.quotes.getStats(),
-      this.inbox.getUnreadCount(),
+      this.leads.getStats(),
       this.inbox.getUnreadCount(),
       this.team.getStats(),
     ]);
