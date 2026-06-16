@@ -1,107 +1,309 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { quotesApi } from '@/lib/api/client'
-import { formatCurrency, formatDate, statusColor } from '@/lib/utils'
-import type { Quote, QuoteStatus } from '@/lib/types'
-import { Plus, Send, CheckCircle } from 'lucide-react'
 
-const TABS: { label: string; value: QuoteStatus | '' }[] = [
-  { label: 'All', value: '' },
-  { label: 'Draft', value: 'draft' },
-  { label: 'Sent', value: 'sent' },
-  { label: 'Paid', value: 'paid' },
-  { label: 'Overdue', value: 'overdue' },
+import { useEffect, useState } from 'react'
+import { Plus, Send, Check, BadgePoundSterling } from 'lucide-react'
+
+import { quotesApi } from '@/lib/api/client'
+import { formatCurrency } from '@/lib/utils'
+import type { Quote, QuoteStatus } from '@/lib/types'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
+const TABS: { value: string; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'accepted', label: 'Accepted' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'declined', label: 'Declined' },
+  { value: 'overdue', label: 'Overdue' },
 ]
 
+const STATUS_VARIANT: Record<QuoteStatus, 'grey' | 'blue' | 'green' | 'red'> = {
+  draft: 'grey',
+  sent: 'blue',
+  accepted: 'green',
+  paid: 'green',
+  declined: 'red',
+  overdue: 'red',
+}
+
+const EMPTY_FORM = {
+  clientName: '',
+  clientEmail: '',
+  clientPhone: '',
+  serviceType: '',
+  propertySize: '',
+  subtotal: '',
+}
+
 export default function QuotesPage() {
-  const [quotes, setQuotes]   = useState<Quote[]>([])
-  const [tab, setTab]         = useState<QuoteStatus | ''>('')
+  const [tab, setTab] = useState('all')
+  const [quotes, setQuotes] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
-  const load = (status: QuoteStatus | '') => {
+  const load = (status: string) => {
     setLoading(true)
-    quotesApi.list(status || undefined)
-      .then(setQuotes).finally(() => setLoading(false))
+    quotesApi
+      .list(status === 'all' ? undefined : status)
+      .then(setQuotes)
+      .catch(() => setQuotes([]))
+      .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load(tab) }, [tab])
+  useEffect(() => {
+    load(tab)
+  }, [tab])
 
-  const markPaid = async (id: string) => {
-    await quotesApi.update(id, { status: 'paid' })
+  const act = async (id: string, status: QuoteStatus) => {
+    await quotesApi.update(id, { status })
     load(tab)
   }
 
-  const sendQuote = async (id: string) => {
-    await quotesApi.update(id, { status: 'sent' })
-    load(tab)
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      const subtotal = Number(form.subtotal) || 0
+      await quotesApi.create({
+        clientName: form.clientName,
+        clientEmail: form.clientEmail,
+        clientPhone: form.clientPhone,
+        serviceType: form.serviceType,
+        propertySize: form.propertySize,
+        subtotal,
+        addonsTotal: 0,
+        total: subtotal,
+      })
+      setOpen(false)
+      setForm(EMPTY_FORM)
+      load(tab)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create quote')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex flex-col gap-6 p-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-[26px] text-[#f0f0f0]">Quotes & Invoices</h1>
-          <p className="text-[13px] text-[#666] mt-0.5">{quotes.length} records</p>
+          <h1 className="text-2xl font-bold">Quotes &amp; Invoices</h1>
+          <p className="text-muted-foreground">Manage and track quotes</p>
         </div>
-        <button className="btn btn-primary btn-sm"><Plus size={14} /> New Quote</button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4" /> New Quote
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>New Quote</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={submit} className="space-y-4">
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <div className="space-y-1.5">
+                <Label htmlFor="qName">Client Name</Label>
+                <Input
+                  id="qName"
+                  value={form.clientName}
+                  onChange={(e) =>
+                    setForm({ ...form, clientName: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="qEmail">Email</Label>
+                  <Input
+                    id="qEmail"
+                    type="email"
+                    value={form.clientEmail}
+                    onChange={(e) =>
+                      setForm({ ...form, clientEmail: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="qPhone">Phone</Label>
+                  <Input
+                    id="qPhone"
+                    value={form.clientPhone}
+                    onChange={(e) =>
+                      setForm({ ...form, clientPhone: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="qService">Service Type</Label>
+                  <Input
+                    id="qService"
+                    value={form.serviceType}
+                    onChange={(e) =>
+                      setForm({ ...form, serviceType: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="qSize">Property Size</Label>
+                  <Input
+                    id="qSize"
+                    value={form.propertySize}
+                    onChange={(e) =>
+                      setForm({ ...form, propertySize: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="qSubtotal">Amount (£)</Label>
+                <Input
+                  id="qSubtotal"
+                  type="number"
+                  step="0.01"
+                  value={form.subtotal}
+                  onChange={(e) =>
+                    setForm({ ...form, subtotal: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit" disabled={saving}>
+                  {saving ? 'Saving…' : 'Create Quote'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-[#181818] border border-[#2a2a2a] rounded-[10px] p-1 w-fit">
-        {TABS.map((t) => (
-          <button key={t.value} onClick={() => setTab(t.value)}
-            className={`px-4 py-1.5 rounded-[7px] text-[12px] font-semibold transition-all ${tab === t.value ? 'bg-[#282828] text-[#f0f0f0]' : 'text-[#666] hover:text-[#a0a0a0]'}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          {TABS.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
-      <div className="card">
-        <div className="overflow-x-auto">
-          <table className="tbl">
-            <thead>
-              <tr><th>Client</th><th>Service</th><th>Total</th><th>Status</th><th>Due</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
+      <Card>
+        <CardHeader>
+          <CardTitle className="capitalize">{tab} Quotes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Client</TableHead>
+                <TableHead>Service</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {loading ? (
-                [...Array(5)].map((_, i) => (
-                  <tr key={i}><td colSpan={6}><div className="h-4 bg-[#202020] rounded animate-pulse" /></td></tr>
-                ))
+                <TableRow>
+                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                    Loading…
+                  </TableCell>
+                </TableRow>
               ) : quotes.length === 0 ? (
-                <tr><td colSpan={6} className="text-center text-[#444] py-10">No quotes found</td></tr>
-              ) : quotes.map((q) => (
-                <tr key={q.id}>
-                  <td>
-                    <p className="td-main">{q.clientName}</p>
-                    <p className="text-[11px] text-[#444] mt-0.5">{q.clientEmail}</p>
-                  </td>
-                  <td>
-                    <p className="text-[#a0a0a0]">{q.serviceType}</p>
-                    <p className="text-[11px] text-[#444]">{q.propertySize}</p>
-                  </td>
-                  <td className="font-semibold text-[#22c55e]">{formatCurrency(Number(q.total))}</td>
-                  <td><span className={`badge ${statusColor[q.status] || 'badge-grey'}`}>{q.status}</span></td>
-                  <td className="text-[#a0a0a0]">{q.dueDate ? formatDate(q.dueDate) : '—'}</td>
-                  <td>
-                    <div className="flex items-center gap-1.5">
-                      {q.status === 'draft' && (
-                        <button onClick={() => sendQuote(q.id)} className="btn btn-ghost btn-sm" title="Send to client">
-                          <Send size={12} /> Send
-                        </button>
-                      )}
-                      {(q.status === 'sent' || q.status === 'overdue') && (
-                        <button onClick={() => markPaid(q.id)} className="btn btn-primary btn-sm" title="Mark paid">
-                          <CheckCircle size={12} /> Mark Paid
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                <TableRow>
+                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                    No quotes found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                quotes.map((q) => (
+                  <TableRow key={q.id}>
+                    <TableCell>
+                      <div className="font-medium">{q.clientName}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {q.clientEmail}
+                      </div>
+                    </TableCell>
+                    <TableCell>{q.serviceType}</TableCell>
+                    <TableCell>{formatCurrency(Number(q.total))}</TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[q.status] ?? 'grey'}>
+                        {q.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        {q.status === 'draft' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => act(q.id, 'sent')}
+                          >
+                            <Send className="h-3.5 w-3.5" /> Send
+                          </Button>
+                        )}
+                        {q.status === 'sent' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => act(q.id, 'accepted')}
+                          >
+                            <Check className="h-3.5 w-3.5" /> Accept
+                          </Button>
+                        )}
+                        {(q.status === 'accepted' || q.status === 'sent') && (
+                          <Button size="sm" onClick={() => act(q.id, 'paid')}>
+                            <BadgePoundSterling className="h-3.5 w-3.5" /> Mark Paid
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }

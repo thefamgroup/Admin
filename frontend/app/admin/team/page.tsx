@@ -1,100 +1,267 @@
 'use client'
+
 import { useEffect, useState } from 'react'
+import { Plus, AlertTriangle } from 'lucide-react'
+
 import { teamApi } from '@/lib/api/client'
-import { statusColor, formatDate, initials } from '@/lib/utils'
-import type { TeamMember } from '@/lib/types'
-import { Plus, AlertCircle, Phone, Mail } from 'lucide-react'
+import { formatCurrency, formatDate, initials } from '@/lib/utils'
+import type { TeamMember, MemberRole, MemberStatus } from '@/lib/types'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+
+const ROLES: MemberRole[] = ['cleaner', 'supervisor', 'driver']
+
+const STATUS_VARIANT: Record<MemberStatus, 'green' | 'red' | 'amber'> = {
+  active: 'green',
+  inactive: 'red',
+  on_leave: 'amber',
+}
+
+const MIN_WAGE = 11.44
+const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000
+
+const dbsExpiringSoon = (dbs?: string) =>
+  dbs ? new Date(dbs) < new Date(Date.now() + THIRTY_DAYS) : false
+
+const EMPTY_FORM = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  role: 'cleaner' as MemberRole,
+  hourlyRate: '',
+  dbsExpiry: '',
+}
 
 export default function TeamPage() {
-  const [members, setMembers] = useState<TeamMember[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter]   = useState<'all'|'active'|'inactive'>('all')
+  const [team, setTeam] = useState<TeamMember[]>([])
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    teamApi.list().then(setMembers).finally(() => setLoading(false))
-  }, [])
+  const load = () => {
+    teamApi
+      .list()
+      .then(setTeam)
+      .catch(() => setTeam([]))
+  }
 
-  const filtered = filter === 'all' ? members : members.filter((m) => m.status === filter)
+  useEffect(load, [])
 
-  const dbsExpiringSoon = (expiry?: string) => {
-    if (!expiry) return false
-    const days = (new Date(expiry).getTime() - Date.now()) / 86400000
-    return days < 30
+  const lowWage = form.hourlyRate !== '' && Number(form.hourlyRate) < MIN_WAGE
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      await teamApi.create({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        role: form.role,
+        hourlyRate: Number(form.hourlyRate) || 0,
+        ...(form.dbsExpiry
+          ? { dbsExpiry: new Date(form.dbsExpiry).toISOString() }
+          : {}),
+      })
+      setOpen(false)
+      setForm(EMPTY_FORM)
+      load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add member')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex flex-col gap-6 p-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-[26px] text-[#f0f0f0]">Team</h1>
-          <p className="text-[13px] text-[#666] mt-0.5">{members.filter(m => m.status === 'active').length} active cleaners</p>
+          <h1 className="text-2xl font-bold">Team</h1>
+          <p className="text-muted-foreground">{team.length} team members</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex bg-[#202020] border border-[#333] rounded-[8px] p-0.5">
-            {(['all','active','inactive'] as const).map((f) => (
-              <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-[6px] text-[12px] font-medium capitalize transition-colors ${filter === f ? 'bg-[#282828] text-[#f0f0f0]' : 'text-[#666] hover:text-[#a0a0a0]'}`}>
-                {f}
-              </button>
-            ))}
-          </div>
-          <button className="btn btn-primary btn-sm"><Plus size={14} /> Add Member</button>
-        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4" /> Add Member
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Team Member</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={submit} className="space-y-4">
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    value={form.firstName}
+                    onChange={(e) =>
+                      setForm({ ...form, firstName: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    value={form.lastName}
+                    onChange={(e) =>
+                      setForm({ ...form, lastName: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tEmail">Email</Label>
+                <Input
+                  id="tEmail"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Role</Label>
+                  <Select
+                    value={form.role}
+                    onValueChange={(v) =>
+                      setForm({ ...form, role: v as MemberRole })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map((r) => (
+                        <SelectItem key={r} value={r} className="capitalize">
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="hourlyRate">Hourly Rate (£)</Label>
+                  <Input
+                    id="hourlyRate"
+                    type="number"
+                    step="0.01"
+                    value={form.hourlyRate}
+                    onChange={(e) =>
+                      setForm({ ...form, hourlyRate: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              {lowWage && (
+                <p className="flex items-center gap-1.5 text-xs text-amber-400">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Below National Minimum Wage (£{MIN_WAGE})
+                </p>
+              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="dbsExpiry">DBS Expiry</Label>
+                <Input
+                  id="dbsExpiry"
+                  type="date"
+                  value={form.dbsExpiry}
+                  onChange={(e) =>
+                    setForm({ ...form, dbsExpiry: e.target.value })
+                  }
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit" disabled={saving}>
+                  {saving ? 'Saving…' : 'Add Member'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {loading ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => <div key={i} className="h-52 bg-[#181818] rounded-[10px] animate-pulse" />)}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center text-[#444] py-16">No team members found</div>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((m) => (
-            <div key={m.id} className="card p-6 text-center hover:border-[#333] transition-colors">
-              {/* Avatar */}
-              <div className="w-14 h-14 rounded-full bg-[#16a34a] flex items-center justify-center text-white text-xl font-bold mx-auto mb-3">
-                {initials(`${m.firstName} ${m.lastName}`)}
-              </div>
-
-              <h3 className="font-semibold text-[#f0f0f0] mb-0.5">{m.firstName} {m.lastName}</h3>
-              <p className="text-[12px] text-[#444] capitalize mb-3">{m.role}</p>
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                <div className="bg-[#202020] rounded-[8px] p-3">
-                  <p className="text-xl font-bold text-[#22c55e]">{m.totalJobsCompleted}</p>
-                  <p className="text-[10px] text-[#444]">Jobs done</p>
-                </div>
-                <div className="bg-[#202020] rounded-[8px] p-3">
-                  <p className="text-xl font-bold text-[#22c55e]">£{Number(m.hourlyRate).toFixed(2)}</p>
-                  <p className="text-[10px] text-[#444]">Per hour</p>
-                </div>
-              </div>
-
-              {/* Status + DBS */}
-              <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
-                <span className={`badge ${statusColor[m.status] || 'badge-grey'}`}>{m.status.replace('_', ' ')}</span>
-                {m.dbsChecked
-                  ? <span className="badge badge-green">DBS ✓</span>
-                  : <span className="badge badge-red">No DBS</span>}
-                {dbsExpiringSoon(m.dbsExpiry) && (
-                  <span className="badge badge-amber flex items-center gap-1"><AlertCircle size={10} /> Expiring</span>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 justify-center">
-                {m.phone && (
-                  <a href={`tel:${m.phone}`} className="btn btn-ghost btn-sm"><Phone size={12} /></a>
-                )}
-                <a href={`mailto:${m.email}`} className="btn btn-ghost btn-sm"><Mail size={12} /></a>
-                <button className="btn btn-ghost btn-sm flex-1">Edit</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {team.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No team members yet</p>
+        ) : (
+          team.map((m) => {
+            const expiring = dbsExpiringSoon(m.dbsExpiry)
+            return (
+              <Card key={m.id}>
+                <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-green-600 text-sm font-semibold text-white">
+                      {initials(`${m.firstName} ${m.lastName}`)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">
+                      {m.firstName} {m.lastName}
+                    </p>
+                    <p className="text-xs capitalize text-muted-foreground">
+                      {m.role}
+                    </p>
+                  </div>
+                  <Badge variant={STATUS_VARIANT[m.status] ?? 'grey'}>
+                    {m.status.replace('_', ' ')}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Hourly rate</span>
+                    <span className="font-medium">
+                      {formatCurrency(Number(m.hourlyRate))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">DBS expiry</span>
+                    <span
+                      className={
+                        expiring ? 'font-medium text-red-400' : 'font-medium'
+                      }
+                    >
+                      {m.dbsExpiry ? formatDate(m.dbsExpiry) : '—'}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })
+        )}
+      </div>
     </div>
   )
 }

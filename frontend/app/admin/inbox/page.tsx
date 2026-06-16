@@ -1,138 +1,128 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { inboxApi } from '@/lib/api/client'
-import { formatDateTime, cn } from '@/lib/utils'
-import type { Message, MessageSource } from '@/lib/types'
-import { MessageCircle, Mail, Globe, Send } from 'lucide-react'
 
-const SOURCE_ICON: Record<MessageSource, React.ElementType> = {
-  whatsapp: MessageCircle, email: Mail, web: Globe,
-}
-const SOURCE_COLOR: Record<MessageSource, string> = {
-  whatsapp: 'text-[#25D366] bg-[rgba(37,211,102,.15)]',
-  email:    'text-[#3b82f6] bg-[rgba(59,130,246,.1)]',
-  web:      'text-[#f59e0b] bg-[rgba(245,158,11,.1)]',
-}
+import { useEffect, useState } from 'react'
+import { MailOpen, Inbox as InboxIcon } from 'lucide-react'
+
+import { inboxApi } from '@/lib/api/client'
+import { formatDateTime, initials, cn } from '@/lib/utils'
+import type { Message } from '@/lib/types'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 export default function InboxPage() {
   const [messages, setMessages] = useState<Message[]>([])
-  const [selected, setSelected] = useState<Message | null>(null)
-  const [reply, setReply]       = useState('')
-  const [loading, setLoading]   = useState(true)
-  const [filter, setFilter]     = useState<'all'|'unread'>('all')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  useEffect(() => {
-    inboxApi.list().then((m) => { setMessages(m); if (m.length > 0) setSelected(m[0]) }).finally(() => setLoading(false))
-  }, [])
-
-  const select = async (msg: Message) => {
-    setSelected(msg)
-    if (msg.status === 'unread') {
-      await inboxApi.markRead(msg.id)
-      setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, status: 'read' } : m))
-    }
+  const load = () => {
+    inboxApi
+      .list()
+      .then(setMessages)
+      .catch(() => setMessages([]))
   }
 
-  const sendReply = () => {
-    if (!reply.trim() || !selected) return
-    // In production: call inboxApi to save reply
-    setReply('')
+  useEffect(load, [])
+
+  const selected = messages.find((m) => m.id === selectedId) ?? null
+
+  const select = (m: Message) => {
+    setSelectedId(m.id)
   }
 
-  const filtered = filter === 'unread' ? messages.filter((m) => m.status === 'unread') : messages
+  const markRead = async (id: string) => {
+    await inboxApi.markRead(id)
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, status: 'read' } : m))
+    )
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-display text-[26px] text-[#f0f0f0]">Inbox</h1>
-          <p className="text-[13px] text-[#666] mt-0.5">{messages.filter(m => m.status === 'unread').length} unread</p>
-        </div>
-        <div className="flex gap-1 bg-[#202020] border border-[#333] rounded-[8px] p-0.5">
-          {(['all','unread'] as const).map((f) => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={cn('px-3 py-1.5 rounded-[6px] text-[12px] font-medium capitalize transition-colors', filter === f ? 'bg-[#282828] text-[#f0f0f0]' : 'text-[#666] hover:text-[#a0a0a0]')}>
-              {f}
-            </button>
-          ))}
-        </div>
+    <div className="flex flex-col gap-6 p-6">
+      <div>
+        <h1 className="text-2xl font-bold">Inbox</h1>
+        <p className="text-muted-foreground">{messages.length} messages</p>
       </div>
 
-      <div className="card flex overflow-hidden" style={{ height: '620px' }}>
-        {/* ── Message list ── */}
-        <div className="w-[280px] border-r border-[#2a2a2a] flex flex-col flex-shrink-0">
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              [...Array(5)].map((_, i) => <div key={i} className="p-4 border-b border-[#2a2a2a]"><div className="h-3 bg-[#202020] rounded animate-pulse mb-2" /><div className="h-2 bg-[#202020] rounded animate-pulse w-2/3" /></div>)
-            ) : filtered.length === 0 ? (
-              <p className="text-center text-[#444] text-sm py-12">No messages</p>
-            ) : filtered.map((msg) => {
-              const Icon   = SOURCE_ICON[msg.source]
-              const srcCls = SOURCE_COLOR[msg.source]
-              return (
-                <div key={msg.id} onClick={() => select(msg)}
-                  className={cn('px-4 py-3.5 border-b border-[#2a2a2a] cursor-pointer transition-colors hover:bg-[#202020]', selected?.id === msg.id && 'bg-[rgba(34,197,94,.05)] border-l-2 border-l-[#22c55e]')}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className={cn('w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px]', srcCls)}>
-                      <Icon size={10} />
-                    </div>
-                    <span className={cn('text-[13px] truncate', msg.status === 'unread' ? 'font-bold text-[#f0f0f0]' : 'font-medium text-[#a0a0a0]')}>
-                      {msg.senderName}
-                    </span>
-                    <span className="text-[10px] text-[#444] ml-auto flex-shrink-0">{formatDateTime(msg.createdAt).split(',')[1]?.trim()}</span>
+      <div className="grid h-[calc(100vh-220px)] grid-cols-1 overflow-hidden rounded-lg border md:grid-cols-[300px_1fr]">
+        {/* Message list */}
+        <ScrollArea className="border-b md:border-b-0 md:border-r">
+          {messages.length === 0 ? (
+            <div className="p-6 text-sm text-muted-foreground">No messages</div>
+          ) : (
+            messages.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => select(m)}
+                className={cn(
+                  'flex w-full items-start gap-3 border-b p-4 text-left transition-colors hover:bg-accent',
+                  selectedId === m.id && 'bg-accent'
+                )}
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="text-xs">
+                    {initials(m.senderName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-medium">
+                      {m.senderName}
+                    </p>
+                    {m.status === 'unread' && (
+                      <span className="h-2 w-2 flex-shrink-0 rounded-full bg-green-500" />
+                    )}
                   </div>
-                  <p className="text-[11px] text-[#444] truncate pl-7">{msg.subject || msg.body}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {m.subject || m.body}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {formatDateTime(m.createdAt)}
+                  </p>
                 </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* ── Thread / Message detail ── */}
-        {selected ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="px-5 py-4 border-b border-[#2a2a2a] flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-[#f0f0f0]">{selected.senderName}</p>
-                <p className="text-[12px] text-[#444]">{selected.senderEmail || selected.senderPhone} · {selected.source}</p>
-              </div>
-              <div className="flex gap-2">
-                {selected.senderPhone && (
-                  <a href={`https://wa.me/44${selected.senderPhone.replace(/\D/,'')}?text=${encodeURIComponent('Hi! Following up on your enquiry with thefamgroup.')}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="btn btn-wa btn-sm"><MessageCircle size={12} /> WhatsApp</a>
-                )}
-                {selected.senderEmail && (
-                  <a href={`mailto:${selected.senderEmail}`} className="btn btn-ghost btn-sm"><Mail size={12} /> Email</a>
-                )}
-              </div>
-            </div>
-
-            {/* Message body */}
-            <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
-              <div className="max-w-[70%] bg-[#202020] border border-[#333] rounded-[4px_12px_12px_12px] px-4 py-3">
-                {selected.subject && <p className="text-[11px] font-semibold text-[#666] mb-1 uppercase tracking-wider">{selected.subject}</p>}
-                <p className="text-[13px] text-[#f0f0f0] leading-relaxed">{selected.body}</p>
-                <p className="text-[10px] text-[#444] mt-2">{formatDateTime(selected.createdAt)}</p>
-              </div>
-            </div>
-
-            {/* Reply box */}
-            <div className="p-4 border-t border-[#2a2a2a] flex gap-3">
-              <input value={reply} onChange={(e) => setReply(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && sendReply()}
-                className="input flex-1" placeholder="Type a reply…" />
-              <button onClick={sendReply} className="btn btn-primary" disabled={!reply.trim()}>
-                <Send size={14} />
               </button>
+            ))
+          )}
+        </ScrollArea>
+
+        {/* Detail panel */}
+        <div className="flex flex-col">
+          {selected ? (
+            <>
+              <div className="flex items-center justify-between gap-2 border-b p-4">
+                <div>
+                  <p className="font-semibold">{selected.senderName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selected.senderEmail || selected.senderPhone || ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="grey" className="capitalize">
+                    {selected.source}
+                  </Badge>
+                  {selected.status === 'unread' && (
+                    <Button size="sm" onClick={() => markRead(selected.id)}>
+                      <MailOpen className="h-3.5 w-3.5" /> Mark read
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <ScrollArea className="flex-1 p-4">
+                {selected.subject && (
+                  <h2 className="mb-2 font-medium">{selected.subject}</h2>
+                )}
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                  {selected.body}
+                </p>
+              </ScrollArea>
+            </>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
+              <InboxIcon className="mb-3 h-10 w-10" />
+              <p className="text-sm">Select a message to read</p>
             </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-[#333] text-sm">
-            Select a message to view
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

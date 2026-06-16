@@ -1,114 +1,174 @@
 'use client'
+
 import { useEffect, useState } from 'react'
+import { Save } from 'lucide-react'
+
 import { settingsApi } from '@/lib/api/client'
-import { Save, Loader2 } from 'lucide-react'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+type Setting = {
+  id: string
+  key: string
+  value: string
+  label: string
+  group: string
+}
 
 const GROUPS = [
-  { key: 'business',      label: '🏢 Business' },
-  { key: 'notifications', label: '🔔 Notifications' },
-  { key: 'pricing',       label: '💷 Pricing' },
+  { key: 'business', label: 'Business' },
+  { key: 'notifications', label: 'Notifications' },
+  { key: 'pricing', label: 'Pricing' },
 ]
 
-type Setting = { id: string; key: string; value: string; label: string; group: string }
+const BOOL_KEYS = [
+  'notify.newBooking',
+  'notify.newLead',
+  'notify.newMessage',
+  'notify.quoteOverdue',
+  'pricing.vat',
+]
 
 export default function SettingsPage() {
-  const [activeGroup, setActiveGroup] = useState('business')
-  const [settings, setSettings]       = useState<Setting[]>([])
-  const [dirty, setDirty]             = useState<Record<string, string>>({})
-  const [saving, setSaving]           = useState(false)
-  const [saved, setSaved]             = useState(false)
+  const [settings, setSettings] = useState<Setting[]>([])
+  const [dirty, setDirty] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const [savedGroup, setSavedGroup] = useState<string | null>(null)
 
   useEffect(() => {
-    settingsApi.list().then(setSettings)
+    settingsApi
+      .list()
+      .then((s) => setSettings(s as Setting[]))
+      .catch(() => setSettings([]))
   }, [])
 
-  const grouped = settings.filter((s) => s.group === activeGroup)
+  const getValue = (key: string) =>
+    dirty[key] ?? settings.find((s) => s.key === key)?.value ?? ''
 
   const update = (key: string, value: string) => {
     setDirty((prev) => ({ ...prev, [key]: value }))
-    setSaved(false)
+    setSavedGroup(null)
   }
 
-  const getValue = (key: string) => dirty[key] ?? settings.find((s) => s.key === key)?.value ?? ''
+  const isBool = (key: string) => BOOL_KEYS.includes(key)
 
-  const save = async () => {
+  const save = async (group: string) => {
     setSaving(true)
     try {
-      const bulk = Object.entries(dirty).map(([key, value]) => ({
-        key, value,
-        label: settings.find((s) => s.key === key)?.label,
-        group: settings.find((s) => s.key === key)?.group,
-      }))
+      const groupKeys = settings
+        .filter((s) => s.group === group)
+        .map((s) => s.key)
+      const bulk = Object.entries(dirty)
+        .filter(([key]) => groupKeys.includes(key))
+        .map(([key, value]) => {
+          const s = settings.find((x) => x.key === key)
+          return { key, value, label: s?.label, group: s?.group }
+        })
       if (bulk.length > 0) await settingsApi.bulk(bulk)
-      setSettings((prev) => prev.map((s) => dirty[s.key] !== undefined ? { ...s, value: dirty[s.key] } : s))
-      setDirty({})
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    } finally { setSaving(false) }
+      setSettings((prev) =>
+        prev.map((s) =>
+          dirty[s.key] !== undefined ? { ...s, value: dirty[s.key] } : s
+        )
+      )
+      setDirty((prev) => {
+        const next = { ...prev }
+        groupKeys.forEach((k) => delete next[k])
+        return next
+      })
+      setSavedGroup(group)
+      setTimeout(() => setSavedGroup(null), 3000)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const isBool = (key: string) =>
-    ['notify.newBooking','notify.newLead','notify.newMessage','notify.quoteOverdue','pricing.vat'].includes(key)
-
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-display text-[26px] text-[#f0f0f0]">Settings</h1>
-          <p className="text-[13px] text-[#666] mt-0.5">Configure your thefamgroup admin</p>
-        </div>
-        <button onClick={save} disabled={saving || Object.keys(dirty).length === 0}
-          className="btn btn-primary disabled:opacity-50">
-          {saving ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : saved ? '✓ Saved' : <><Save size={14} /> Save Changes</>}
-        </button>
+    <div className="flex flex-col gap-6 p-6">
+      <div>
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <p className="text-muted-foreground">Configure your thefamgroup admin</p>
       </div>
 
-      <div className="grid grid-cols-[200px_1fr] gap-5">
-        {/* Left nav */}
-        <div className="card p-2 h-fit">
+      <Tabs defaultValue="business">
+        <TabsList>
           {GROUPS.map((g) => (
-            <button key={g.key} onClick={() => setActiveGroup(g.key)}
-              className={`w-full text-left px-3.5 py-2.5 rounded-[8px] text-[13px] transition-colors mb-0.5 ${activeGroup === g.key ? 'bg-[rgba(34,197,94,.1)] text-[#22c55e]' : 'text-[#a0a0a0] hover:bg-[#202020] hover:text-[#f0f0f0]'}`}>
+            <TabsTrigger key={g.key} value={g.key}>
               {g.label}
-            </button>
+            </TabsTrigger>
           ))}
-        </div>
+        </TabsList>
 
-        {/* Settings panel */}
-        <div className="card p-6">
-          <h2 className="font-semibold text-[#f0f0f0] mb-6 pb-4 border-b border-[#2a2a2a]">
-            {GROUPS.find((g) => g.key === activeGroup)?.label}
-          </h2>
+        {GROUPS.map((g) => {
+          const groupSettings = settings.filter((s) => s.group === g.key)
+          return (
+            <TabsContent key={g.key} value={g.key}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>{g.label}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  {groupSettings.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No settings in this group.
+                    </p>
+                  ) : (
+                    groupSettings.map((s) =>
+                      isBool(s.key) ? (
+                        <div
+                          key={s.key}
+                          className="flex items-center justify-between border-b pb-4"
+                        >
+                          <div>
+                            <p className="text-sm">{s.label}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {s.key}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={getValue(s.key) === 'true'}
+                            onCheckedChange={(checked) =>
+                              update(s.key, checked ? 'true' : 'false')
+                            }
+                            aria-label={s.label}
+                          />
+                        </div>
+                      ) : (
+                        <div key={s.key} className="space-y-1.5">
+                          <Label htmlFor={s.key}>{s.label}</Label>
+                          <Input
+                            id={s.key}
+                            value={getValue(s.key)}
+                            onChange={(e) => update(s.key, e.target.value)}
+                          />
+                        </div>
+                      )
+                    )
+                  )}
 
-          <div className="space-y-5">
-            {grouped.length === 0 && <p className="text-[#444] text-sm">No settings in this group.</p>}
-            {grouped.map((s) => (
-              <div key={s.key} className={isBool(s.key) ? 'flex items-center justify-between py-3 border-b border-[#2a2a2a]' : 'space-y-1.5'}>
-                {isBool(s.key) ? (
-                  <>
-                    <div>
-                      <p className="text-[13px] text-[#f0f0f0]">{s.label}</p>
-                      <p className="text-[11px] text-[#444]">{s.key}</p>
-                    </div>
-                    <button
-                      onClick={() => update(s.key, getValue(s.key) === 'true' ? 'false' : 'true')}
-                      className={`toggle ${getValue(s.key) === 'true' ? 'on' : ''}`}
-                      role="switch" aria-checked={getValue(s.key) === 'true'}
-                      aria-label={s.label}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <label htmlFor={s.key} className="label">{s.label}</label>
-                    <input id={s.key} className="input" value={getValue(s.key)}
-                      onChange={(e) => update(s.key, e.target.value)} />
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+                  <div className="flex items-center gap-3 pt-2">
+                    <Button onClick={() => save(g.key)} disabled={saving}>
+                      <Save className="h-4 w-4" />
+                      {saving ? 'Saving…' : 'Save'}
+                    </Button>
+                    {savedGroup === g.key && (
+                      <span className="text-sm text-green-500">Saved</span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )
+        })}
+      </Tabs>
     </div>
   )
 }
