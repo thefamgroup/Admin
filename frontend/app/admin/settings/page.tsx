@@ -9,6 +9,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,6 +29,7 @@ const GROUPS = [
   { key: 'business', label: 'Business' },
   { key: 'notifications', label: 'Notifications' },
   { key: 'pricing', label: 'Pricing' },
+  { key: 'calculator', label: 'Calculator' },
 ]
 
 const BOOL_KEYS = [
@@ -36,6 +38,34 @@ const BOOL_KEYS = [
   'notify.newMessage',
   'notify.quoteOverdue',
   'pricing.vat',
+]
+
+const CALCULATOR_SECTIONS = [
+  {
+    label: 'Base Prices (£)',
+    description: 'Starting price before size, frequency, or condition adjustments.',
+    prefix: 'calculator.base.',
+  },
+  {
+    label: 'Property Size Multipliers',
+    description: 'Multiply the base price by this factor for each bedroom count.',
+    prefix: 'calculator.size.',
+  },
+  {
+    label: 'Frequency Multipliers',
+    description: 'Discount applied for recurring bookings (1 = no discount).',
+    prefix: 'calculator.freq.',
+  },
+  {
+    label: 'Condition Multipliers',
+    description: 'Premium for dirtier properties (1 = standard condition).',
+    prefix: 'calculator.cond.',
+  },
+  {
+    label: 'Add-On Prices (£)',
+    description: 'Fixed price for each optional add-on service.',
+    prefix: 'calculator.addon.',
+  },
 ]
 
 export default function SettingsPage() {
@@ -91,6 +121,8 @@ export default function SettingsPage() {
     }
   }
 
+  const calcSettings = settings.filter((s) => s.group === 'calculator')
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>
@@ -107,7 +139,8 @@ export default function SettingsPage() {
           ))}
         </TabsList>
 
-        {GROUPS.map((g) => {
+        {/* Business / Notifications / Pricing tabs — generic renderer */}
+        {GROUPS.filter((g) => g.key !== 'calculator').map((g) => {
           const groupSettings = settings.filter((s) => s.group === g.key)
           return (
             <TabsContent key={g.key} value={g.key}>
@@ -160,7 +193,7 @@ export default function SettingsPage() {
                       {saving ? 'Saving…' : 'Save'}
                     </Button>
                     {savedGroup === g.key && (
-                      <span className="text-sm text-green-500">Saved</span>
+                      <span className="text-sm text-green-500">Saved ✓</span>
                     )}
                   </div>
                 </CardContent>
@@ -168,6 +201,57 @@ export default function SettingsPage() {
             </TabsContent>
           )
         })}
+
+        {/* Calculator tab — structured by section */}
+        <TabsContent value="calculator">
+          <div className="space-y-6">
+            {CALCULATOR_SECTIONS.map((section) => {
+              const sectionSettings = calcSettings.filter((s) =>
+                s.key.startsWith(section.prefix)
+              )
+              return (
+                <Card key={section.prefix}>
+                  <CardHeader>
+                    <CardTitle className="text-base">{section.label}</CardTitle>
+                    <CardDescription>{section.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {sectionSettings.map((s) => (
+                        <div key={s.key} className="space-y-1.5">
+                          <Label htmlFor={s.key} className="text-xs">
+                            {s.label}
+                          </Label>
+                          <Input
+                            id={s.key}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={getValue(s.key)}
+                            onChange={(e) => update(s.key, e.target.value)}
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+
+            <div className="flex items-center gap-3">
+              <Button onClick={() => save('calculator')} disabled={saving}>
+                <Save className="h-4 w-4" />
+                {saving ? 'Saving…' : 'Save Pricing'}
+              </Button>
+              {savedGroup === 'calculator' && (
+                <span className="text-sm text-green-500">
+                  Saved ✓ — website calculator will update within 5 minutes
+                </span>
+              )}
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   )
