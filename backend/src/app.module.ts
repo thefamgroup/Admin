@@ -26,7 +26,7 @@ import { SettingsModule } from './modules/settings/settings.module';
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
-        synchronize: config.get('NODE_ENV') !== 'production', // never in prod
+        synchronize: config.get('NODE_ENV') !== 'production' || config.get('SYNCHRONIZE_DB') === 'true',
         logging: config.get('NODE_ENV') === 'development',
         ssl: { rejectUnauthorized: false },
       }),
