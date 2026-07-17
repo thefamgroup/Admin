@@ -24,7 +24,9 @@ async function bootstrap() {
   const allowedOrigins = [
     frontendUrl,
     'https://admin.thefamgroup.uk',
-    'https://admin-l3hf5qagg-thefamgroup-s-projects.vercel.app',
+    'https://www.thefamgroup.uk',
+    'https://thefamgroup.uk',
+    'http://localhost:3000',
     'http://localhost:3001',
   ].filter(Boolean)
 
