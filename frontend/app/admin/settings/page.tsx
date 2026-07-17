@@ -73,6 +73,7 @@ export default function SettingsPage() {
   const [dirty, setDirty] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [savedGroup, setSavedGroup] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     settingsApi
@@ -93,6 +94,7 @@ export default function SettingsPage() {
 
   const save = async (group: string) => {
     setSaving(true)
+    setSaveError(null)
     try {
       const groupKeys = settings
         .filter((s) => s.group === group)
@@ -116,6 +118,8 @@ export default function SettingsPage() {
       })
       setSavedGroup(group)
       setTimeout(() => setSavedGroup(null), 3000)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Save failed — please try again')
     } finally {
       setSaving(false)
     }
@@ -187,13 +191,20 @@ export default function SettingsPage() {
                     )
                   )}
 
-                  <div className="flex items-center gap-3 pt-2">
-                    <Button onClick={() => save(g.key)} disabled={saving}>
-                      <Save className="h-4 w-4" />
-                      {saving ? 'Saving…' : 'Save'}
-                    </Button>
-                    {savedGroup === g.key && (
-                      <span className="text-sm text-green-500">Saved ✓</span>
+                  <div className="flex flex-col gap-2 pt-2">
+                    <div className="flex items-center gap-3">
+                      <Button onClick={() => save(g.key)} disabled={saving}>
+                        <Save className="h-4 w-4" />
+                        {saving ? 'Saving…' : 'Save'}
+                      </Button>
+                      {savedGroup === g.key && (
+                        <span className="text-sm text-green-500">Saved ✓</span>
+                      )}
+                    </div>
+                    {saveError && (
+                      <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                        Error: {saveError}
+                      </p>
                     )}
                   </div>
                 </CardContent>
@@ -239,15 +250,20 @@ export default function SettingsPage() {
               )
             })}
 
-            <div className="flex items-center gap-3">
-              <Button onClick={() => save('calculator')} disabled={saving}>
-                <Save className="h-4 w-4" />
-                {saving ? 'Saving…' : 'Save Pricing'}
-              </Button>
-              {savedGroup === 'calculator' && (
-                <span className="text-sm text-green-500">
-                  Saved ✓ — website calculator will update within 5 minutes
-                </span>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <Button onClick={() => save('calculator')} disabled={saving}>
+                  <Save className="h-4 w-4" />
+                  {saving ? 'Saving…' : 'Save Pricing'}
+                </Button>
+                {savedGroup === 'calculator' && (
+                  <span className="text-sm text-green-500">Saved ✓ — website calculator updated</span>
+                )}
+              </div>
+              {saveError && (
+                <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                  Error: {saveError}
+                </p>
               )}
             </div>
           </div>
