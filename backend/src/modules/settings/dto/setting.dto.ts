@@ -1,5 +1,6 @@
 // dto/setting.dto.ts
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpsertSettingDto {
@@ -10,5 +11,9 @@ export class UpsertSettingDto {
 }
 
 export class BulkUpsertDto {
-  @ApiProperty({ type: [UpsertSettingDto] }) settings: UpsertSettingDto[];
+  @ApiProperty({ type: [UpsertSettingDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpsertSettingDto)
+  settings: UpsertSettingDto[];
 }
