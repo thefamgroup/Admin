@@ -43,7 +43,8 @@ export type MessageStatus = 'unread'|'read'|'replied'|'archived'
 export interface Message {
   id: string; senderName: string; senderEmail?: string; senderPhone?: string;
   source: MessageSource; status: MessageStatus; body: string;
-  subject?: string; threadId?: string; assignedTo?: string; createdAt: string;
+  subject?: string; threadId?: string; assignedTo?: string;
+  waFrom?: string; createdAt: string;
 }
 
 // ── Team ──────────────────────────────────────────────────────────
@@ -53,7 +54,8 @@ export interface TeamMember {
   id: string; firstName: string; lastName: string; email: string; phone?: string;
   role: MemberRole; status: MemberStatus; hourlyRate: number;
   dbsChecked: boolean; dbsExpiry?: string; address?: string;
-  notes?: string; totalJobsCompleted: number; rating: number;
+  notes?: string; whatsappPhone?: string;
+  totalJobsCompleted: number; totalJobsSent: number; totalJobsCancelled: number; rating: number;
   createdAt: string; updatedAt: string;
 }
 

@@ -77,6 +77,7 @@ export const inboxApi = {
   update:   (id: string, data: Partial<Message>) => patch<Message>(`/inbox/${id}`, data),
   markRead: (id: string) => patch<Message>(`/inbox/${id}/read`, {}),
   unread:   () => get<number>('/inbox/unread-count'),
+  reply:    (id: string, text: string) => post<{ sent: boolean }>(`/inbox/${id}/reply`, { text }),
 }
 
 // ── Team ──────────────────────────────────────────────────────────

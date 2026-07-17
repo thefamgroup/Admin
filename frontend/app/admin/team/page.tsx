@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, AlertTriangle } from 'lucide-react'
+import { Plus, AlertTriangle, MessageCircle } from 'lucide-react'
 
 import { teamApi } from '@/lib/api/client'
 import { formatCurrency, formatDate, initials } from '@/lib/utils'
@@ -53,6 +53,7 @@ const EMPTY_FORM = {
   role: 'cleaner' as MemberRole,
   hourlyRate: '',
   dbsExpiry: '',
+  whatsappPhone: '',
 }
 
 export default function TeamPage() {
@@ -84,9 +85,8 @@ export default function TeamPage() {
         email: form.email,
         role: form.role,
         hourlyRate: Number(form.hourlyRate) || 0,
-        ...(form.dbsExpiry
-          ? { dbsExpiry: new Date(form.dbsExpiry).toISOString() }
-          : {}),
+        ...(form.dbsExpiry ? { dbsExpiry: new Date(form.dbsExpiry).toISOString() } : {}),
+        ...(form.whatsappPhone ? { whatsappPhone: form.whatsappPhone.replace(/\s/g, '') } : {}),
       })
       setOpen(false)
       setForm(EMPTY_FORM)
@@ -198,10 +198,26 @@ export default function TeamPage() {
                   id="dbsExpiry"
                   type="date"
                   value={form.dbsExpiry}
-                  onChange={(e) =>
-                    setForm({ ...form, dbsExpiry: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, dbsExpiry: e.target.value })}
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="whatsappPhone">
+                  WhatsApp Number
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                    (E.164 format — e.g. 447769240184)
+                  </span>
+                </Label>
+                <Input
+                  id="whatsappPhone"
+                  type="tel"
+                  placeholder="447769240184"
+                  value={form.whatsappPhone}
+                  onChange={(e) => setForm({ ...form, whatsappPhone: e.target.value })}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Required to send job dispatch messages via WhatsApp. Country code, no + or spaces.
+                </p>
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={saving}>
@@ -242,20 +258,31 @@ export default function TeamPage() {
                 <CardContent className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Hourly rate</span>
-                    <span className="font-medium">
-                      {formatCurrency(Number(m.hourlyRate))}
-                    </span>
+                    <span className="font-medium">{formatCurrency(Number(m.hourlyRate))}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">DBS expiry</span>
-                    <span
-                      className={
-                        expiring ? 'font-medium text-red-400' : 'font-medium'
-                      }
-                    >
+                    <span className={expiring ? 'font-medium text-red-400' : 'font-medium'}>
                       {m.dbsExpiry ? formatDate(m.dbsExpiry) : '—'}
                     </span>
                   </div>
+                  <div className="flex justify-between border-t pt-2">
+                    <span className="text-muted-foreground">Jobs</span>
+                    <span className="font-medium text-xs">
+                      {m.totalJobsSent ?? 0} sent · {m.totalJobsCompleted} done · {m.totalJobsCancelled ?? 0} cancelled
+                    </span>
+                  </div>
+                  {m.whatsappPhone ? (
+                    <div className="flex items-center gap-1.5 text-xs text-green-600">
+                      <MessageCircle className="h-3 w-3" />
+                      WhatsApp enabled
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MessageCircle className="h-3 w-3" />
+                      No WhatsApp set
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )
