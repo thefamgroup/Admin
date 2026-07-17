@@ -18,7 +18,10 @@ export class TeamMember {
   @Column({ type: 'date', nullable: true }) dbsExpiry: Date;
   @Column({ nullable: true }) address: string;
   @Column({ nullable: true }) notes: string;
+  @Column({ nullable: true }) whatsappPhone: string; // E.164 format e.g. "447769240184"
   @Column({ default: 0 }) totalJobsCompleted: number;
+  @Column({ default: 0 }) totalJobsSent: number;
+  @Column({ default: 0 }) totalJobsCancelled: number;
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 }) rating: number;
   @CreateDateColumn() createdAt: Date;
   @UpdateDateColumn() updatedAt: Date;

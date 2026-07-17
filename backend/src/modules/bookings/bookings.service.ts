@@ -62,6 +62,28 @@ export class BookingsService {
     });
   }
 
+  // Find booking by first 6 chars of UUID (short ref shown in WhatsApp dispatch)
+  findByShortRef(shortRef: string) {
+    return this.repo
+      .createQueryBuilder('b')
+      .where('UPPER(LEFT(REPLACE(b.id, \'-\', \'\'), 6)) = :ref', { ref: shortRef.toUpperCase() })
+      .getOne();
+  }
+
+  async updateStatus(id: string, status: BookingStatus) {
+    await this.repo.update(id, { status });
+  }
+
+  async clearAssignment(id: string) {
+    await this.repo.update(id, { assignedEmployeeId: undefined, assignedTo: undefined });
+  }
+
+  async appendNote(id: string, note: string) {
+    const b = await this.findOne(id);
+    b.notes = b.notes ? `${b.notes}\n${note}` : note;
+    await this.repo.save(b);
+  }
+
   async getStats() {
     const total     = await this.repo.count();
     const pending   = await this.repo.count({ where: { status: BookingStatus.PENDING } });

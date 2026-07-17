@@ -10,6 +10,7 @@ import { LeadsModule } from './modules/leads/leads.module';
 import { InboxModule } from './modules/inbox/inbox.module';
 import { TeamModule } from './modules/team/team.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     InboxModule,
     TeamModule,
     SettingsModule,
+    WhatsAppModule,
   ],
 })
 export class AppModule {}

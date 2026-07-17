@@ -16,5 +16,6 @@ export class Message {
   @Column({ nullable: true }) subject: string;
   @Column({ nullable: true }) threadId: string;
   @Column({ nullable: true }) assignedTo: string;
+  @Column({ nullable: true }) waFrom: string; // WhatsApp phone number for reply routing
   @CreateDateColumn() createdAt: Date;
 }

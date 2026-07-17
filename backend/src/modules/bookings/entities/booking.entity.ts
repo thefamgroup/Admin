@@ -55,7 +55,10 @@ export class Booking {
   price: number;
 
   @Column({ nullable: true })
-  assignedTo: string; // team member name
+  assignedTo: string; // team member name (display)
+
+  @Column({ nullable: true })
+  assignedEmployeeId: string; // team member UUID for WhatsApp dispatch
 
   @Column({ nullable: true })
   notes: string;

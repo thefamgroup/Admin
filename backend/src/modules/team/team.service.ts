@@ -40,6 +40,22 @@ export class TeamService {
 
   async remove(id: string) { return this.repo.remove(await this.findOne(id)); }
 
+  findByWhatsApp(phone: string) {
+    return this.repo.findOne({ where: { whatsappPhone: phone } });
+  }
+
+  async incrementJobCompleted(id: string) {
+    await this.repo.increment({ id }, 'totalJobsCompleted', 1);
+  }
+
+  async incrementJobCancelled(id: string) {
+    await this.repo.increment({ id }, 'totalJobsCancelled', 1);
+  }
+
+  async incrementJobSent(id: string) {
+    await this.repo.increment({ id }, 'totalJobsSent', 1);
+  }
+
   async getStats() {
     const [total, active, inactive] = await Promise.all([
       this.repo.count(),

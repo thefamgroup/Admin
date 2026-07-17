@@ -11,6 +11,7 @@ export class CreateMessageDto {
   @ApiProperty() @IsString() body: string;
   @ApiPropertyOptional() @IsOptional() @IsString() subject?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() threadId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() waFrom?: string;
 }
 
 export class UpdateMessageDto {
