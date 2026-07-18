@@ -355,14 +355,17 @@ export class BotService {
 
     const { service, size, freq } = session.data;
     const pricing = await this.settingsService.getPricingConfig();
+    const bp = pricing.BASE_PRICES as Record<string, number>;
+    const sm = pricing.SIZE_MULT as Record<string, number>;
+    const fm = pricing.FREQ_MULT as Record<string, number>;
+    const cm = pricing.COND_MULT as Record<string, number>;
 
-    const base = pricing.BASE_PRICES[service] ?? 80;
-    const sizeM = pricing.SIZE_MULT[size] ?? 1;
-    const freqM = pricing.FREQ_MULT[freq] ?? 1;
-    const condM = pricing.COND_MULT[cond] ?? 1;
+    const base = bp[service] ?? 80;
+    const sizeM = sm[size] ?? 1;
+    const freqM = fm[freq] ?? 1;
+    const condM = cm[cond] ?? 1;
     const total = Math.round(base * sizeM * freqM * condM);
 
-    const serviceLabel = Object.entries(SERVICE_LABELS).find(([, v]) => v === service)?.[0];
     const serviceNames: Record<string, string> = {
       regular: 'Regular Home Clean',
       deep: 'Deep Clean',
@@ -478,9 +481,12 @@ export class BotService {
     const { service, size, freq, name, email } = session.data;
 
     const pricing = await this.settingsService.getPricingConfig();
-    const base = pricing.BASE_PRICES[service] ?? 80;
-    const sizeM = pricing.SIZE_MULT[size] ?? 1;
-    const freqM = pricing.FREQ_MULT[freq] ?? 1;
+    const bp2 = pricing.BASE_PRICES as Record<string, number>;
+    const sm2 = pricing.SIZE_MULT as Record<string, number>;
+    const fm2 = pricing.FREQ_MULT as Record<string, number>;
+    const base = bp2[service] ?? 80;
+    const sizeM = sm2[size] ?? 1;
+    const freqM = fm2[freq] ?? 1;
     const total = Math.round(base * sizeM * freqM);
 
     // Create inbox message

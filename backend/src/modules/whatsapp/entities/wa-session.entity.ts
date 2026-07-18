@@ -12,10 +12,10 @@ export class WaSession {
   data: Record<string, any>; // accumulated form data during conversation
 
   @Column({ nullable: true })
-  inboxMessageId: string; // linked inbox thread for agent handoff
+  inboxMessageId: string | null; // linked inbox thread for agent handoff
 
   @Column({ nullable: true })
-  activeJobRef: string; // short booking ref for employee job context
+  activeJobRef: string | null; // short booking ref for employee job context
 
   @UpdateDateColumn()
   updatedAt: Date;
