@@ -129,6 +129,7 @@ export class BotService {
     mediaId?: string,
   ): Promise<void> {
     const msg = (text || '').trim().toLowerCase();
+    this.logger.log(`[Bot] ← ${from} (${senderName}): "${msg}" [state will be resolved]`);
 
     // Check if sender is a registered employee
     const employee = await this.teamService.findByWhatsApp(from);
@@ -138,6 +139,13 @@ export class BotService {
     }
 
     const session = await this.getSession(from);
+    this.logger.log(`[Bot] Session state for ${from}: ${session.state}`);
+
+    // Global escape: always allow reset keywords regardless of state
+    if (['menu', 'hi', 'hello', 'hey', 'start', 'help', 'reset'].includes(msg)) {
+      await this.sendMenu(session, from);
+      return;
+    }
 
     // If agent is handling this conversation, store the message in the inbox thread
     if (session.state === 'AGENT') {
