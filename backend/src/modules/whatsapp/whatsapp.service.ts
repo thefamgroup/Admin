@@ -51,7 +51,7 @@ export class WhatsAppService implements OnModuleInit {
     }
     try {
       const res = await fetch(
-        `https://graph.facebook.com/v19.0/${this.phoneNumberId}/messages`,
+        `https://graph.facebook.com/v21.0/${this.phoneNumberId}/messages`,
         {
           method: 'POST',
           headers: {
