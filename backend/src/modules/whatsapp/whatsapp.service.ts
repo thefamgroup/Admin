@@ -1,15 +1,43 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class WhatsAppService {
+export class WhatsAppService implements OnModuleInit {
   private readonly logger = new Logger(WhatsAppService.name);
   private token: string;
   private phoneNumberId: string;
+  private wabaId: string;
 
   constructor(private config: ConfigService) {
     this.token = config.get('WHATSAPP_TOKEN', '');
     this.phoneNumberId = config.get('WHATSAPP_PHONE_NUMBER_ID', '');
+    this.wabaId = config.get('WHATSAPP_WABA_ID', '');
+  }
+
+  async onModuleInit() {
+    if (this.isConfigured && this.wabaId) {
+      await this.subscribeWABA();
+    }
+  }
+
+  private async subscribeWABA(): Promise<void> {
+    try {
+      const res = await fetch(
+        `https://graph.facebook.com/v21.0/${this.wabaId}/subscribed_apps`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${this.token}` },
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data as any).success) {
+        this.logger.log(`[WA] WABA ${this.wabaId} subscribed to app successfully`);
+      } else {
+        this.logger.warn(`[WA] WABA subscription response: ${JSON.stringify(data)}`);
+      }
+    } catch (err) {
+      this.logger.warn(`[WA] WABA subscription failed: ${err}`);
+    }
   }
 
   get isConfigured() {
