@@ -11,10 +11,10 @@ export class WaSession {
   @Column({ type: 'jsonb', nullable: true, default: {} })
   data: Record<string, any>; // accumulated form data during conversation
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   inboxMessageId: string | null; // linked inbox thread for agent handoff
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   activeJobRef: string | null; // short booking ref for employee job context
 
   @UpdateDateColumn()
