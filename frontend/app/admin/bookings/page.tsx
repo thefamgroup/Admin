@@ -96,9 +96,10 @@ export default function BookingsPage() {
 
   const toggleEmployee = async (bookingId: string, employeeId: string, current: string[]) => {
     setAssigning(true)
-    const next = current.includes(employeeId)
-      ? current.filter((id) => id !== employeeId)
-      : [...current, employeeId]
+    const isAdding = !current.includes(employeeId)
+    const next = isAdding
+      ? [...current, employeeId]
+      : current.filter((id) => id !== employeeId)
     const names = next.map((id) => {
       const m = team.find((t) => t.id === id)
       return m ? `${m.firstName} ${m.lastName}` : id
@@ -107,6 +108,10 @@ export default function BookingsPage() {
       assignedEmployeeIds: next,
       assignedTo: names.join(', '),
     } as any).catch(() => {})
+    // Auto-dispatch WhatsApp notification when adding an employee
+    if (isAdding) {
+      await bookingsApi.dispatch(bookingId, employeeId).catch(() => {})
+    }
     setAssigning(false)
     load()
   }

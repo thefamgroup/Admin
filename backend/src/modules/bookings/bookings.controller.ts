@@ -55,4 +55,13 @@ export class BookingsController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.remove(id);
   }
+
+  @Post(':id/dispatch/:employeeId')
+  @ApiOperation({ summary: 'Send WhatsApp job notification to an employee' })
+  dispatch(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('employeeId', ParseUUIDPipe) employeeId: string,
+  ) {
+    return this.service.dispatchToEmployee(id, employeeId);
+  }
 }

@@ -1,15 +1,20 @@
 // bookings.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Like, FindOptionsWhere } from 'typeorm';
 import { Booking, BookingStatus } from './entities/booking.entity';
 import { CreateBookingDto, UpdateBookingDto, BookingQueryDto } from './dto/booking.dto';
+import { TeamService } from '../team/team.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 
 @Injectable()
 export class BookingsService {
   constructor(
     @InjectRepository(Booking)
     private readonly repo: Repository<Booking>,
+    private readonly teamService: TeamService,
+    @Inject(forwardRef(() => WhatsAppService))
+    private readonly wa: WhatsAppService,
   ) {}
 
   async findAll(query: BookingQueryDto) {
@@ -85,6 +90,32 @@ export class BookingsService {
 
   async clearAssignment(id: string) {
     await this.repo.update(id, { assignedEmployeeId: undefined, assignedTo: undefined });
+  }
+
+  async dispatchToEmployee(bookingId: string, employeeId: string): Promise<{ sent: boolean }> {
+    const booking = await this.findOne(bookingId);
+    const employee = await this.teamService.findOne(employeeId);
+    const phone = employee.whatsappPhone;
+    if (!phone) return { sent: false };
+
+    const ref = booking.id.replace(/-/g, '').substring(0, 6).toUpperCase();
+    const dateStr = booking.scheduledAt
+      ? new Date(booking.scheduledAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+      : 'Date TBC';
+
+    const message =
+      `🧹 *New Job — Ref: ${ref}*\n\n` +
+      `*Client:* ${booking.clientName}\n` +
+      `*Service:* ${booking.serviceType?.replace(/_/g, ' ')}\n` +
+      `*Date:* ${dateStr}\n` +
+      `*Address:* ${booking.address}\n` +
+      (booking.notes ? `*Notes:* ${booking.notes.split('\n')[0]}\n` : '') +
+      `\nPlease reply:\n` +
+      `• *ACCEPT ${ref}* — to confirm this job\n` +
+      `• *DECLINE ${ref}* — if you are unavailable`;
+
+    const sent = await this.wa.sendText(phone, message);
+    return { sent };
   }
 
   async appendNote(id: string, note: string) {

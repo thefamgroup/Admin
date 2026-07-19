@@ -46,6 +46,7 @@ export const bookingsApi = {
   create:     (data: Partial<Booking>) => post<Booking>('/bookings', data),
   update:     (id: string, data: Partial<Booking>) => patch<Booking>(`/bookings/${id}`, data),
   remove:     (id: string) => del<void>(`/bookings/${id}`),
+  dispatch:   (id: string, employeeId: string) => post<{ sent: boolean }>(`/bookings/${id}/dispatch/${employeeId}`, {}),
 }
 
 // ── Quotes ────────────────────────────────────────────────────────
