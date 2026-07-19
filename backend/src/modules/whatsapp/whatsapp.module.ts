@@ -15,7 +15,7 @@ import { LeadsModule } from '../leads/leads.module';
     TypeOrmModule.forFeature([WaSession]),
     forwardRef(() => InboxModule),
     TeamModule,
-    BookingsModule,
+    forwardRef(() => BookingsModule),
     SettingsModule,
     LeadsModule,
   ],
