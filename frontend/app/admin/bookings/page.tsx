@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Users } from 'lucide-react'
 
-import { bookingsApi } from '@/lib/api/client'
+import { bookingsApi, teamApi } from '@/lib/api/client'
 import { formatCurrency } from '@/lib/utils'
-import type { Booking, ServiceType } from '@/lib/types'
+import type { Booking, ServiceType, TeamMember } from '@/lib/types'
 import { StatusBadge } from '@/components/data-table'
 import {
   Card,
@@ -76,6 +76,9 @@ export default function BookingsPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [team, setTeam] = useState<TeamMember[]>([])
+  const [assignOpen, setAssignOpen] = useState<string | null>(null)
+  const [assigning, setAssigning] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -86,7 +89,27 @@ export default function BookingsPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  useEffect(() => {
+    load()
+    teamApi.list().then(setTeam).catch(() => {})
+  }, [])
+
+  const toggleEmployee = async (bookingId: string, employeeId: string, current: string[]) => {
+    setAssigning(true)
+    const next = current.includes(employeeId)
+      ? current.filter((id) => id !== employeeId)
+      : [...current, employeeId]
+    const names = next.map((id) => {
+      const m = team.find((t) => t.id === id)
+      return m ? `${m.firstName} ${m.lastName}` : id
+    })
+    await bookingsApi.update(bookingId, {
+      assignedEmployeeIds: next,
+      assignedTo: names.join(', '),
+    } as any).catch(() => {})
+    setAssigning(false)
+    load()
+  }
 
   const filtered = useMemo(
     () =>
@@ -316,11 +339,11 @@ export default function BookingsPage() {
                       {SERVICE_LABELS[b.serviceType] ?? b.serviceType}
                     </TableCell>
                     <TableCell>
-                      {new Date(b.scheduledAt).toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
+                      {b.scheduledAt
+                        ? new Date(b.scheduledAt).toLocaleDateString('en-GB', {
+                            day: '2-digit', month: 'short', year: 'numeric',
+                          })
+                        : <span className="text-muted-foreground text-xs">TBC</span>}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={b.status} />
@@ -329,9 +352,44 @@ export default function BookingsPage() {
                       {b.price ? formatCurrency(Number(b.price)) : '—'}
                     </TableCell>
                     <TableCell>
-                      {b.assignedTo ?? (
-                        <span className="text-muted-foreground">Unassigned</span>
-                      )}
+                      {/* Multi-employee assignment */}
+                      <div className="flex flex-col gap-1">
+                        {assignOpen === b.id ? (
+                          <div className="rounded-md border bg-popover p-2 shadow-md min-w-[180px]">
+                            <p className="text-xs font-medium mb-1.5 text-muted-foreground">Assign staff</p>
+                            {team.map((m) => {
+                              const ids: string[] = (b as any).assignedEmployeeIds ?? []
+                              const checked = ids.includes(m.id)
+                              return (
+                                <label key={m.id} className="flex items-center gap-2 py-1 cursor-pointer hover:text-foreground text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    disabled={assigning}
+                                    onChange={() => toggleEmployee(b.id, m.id, ids)}
+                                    className="accent-green-600"
+                                  />
+                                  {m.firstName} {m.lastName}
+                                </label>
+                              )
+                            })}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="mt-1 h-6 text-xs w-full"
+                              onClick={() => setAssignOpen(null)}
+                            >Done</Button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setAssignOpen(b.id)}
+                            className="flex items-center gap-1 text-xs text-left hover:text-foreground text-muted-foreground"
+                          >
+                            <Users className="h-3 w-3" />
+                            {b.assignedTo || 'Assign staff'}
+                          </button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

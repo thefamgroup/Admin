@@ -48,17 +48,23 @@ export class Booking {
   @Column({ type: 'enum', enum: BookingStatus, default: BookingStatus.PENDING })
   status: BookingStatus;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: 'timestamptz', nullable: true })
   scheduledAt: Date;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   price: number;
 
   @Column({ nullable: true })
-  assignedTo: string; // team member name (display)
+  assignedTo: string; // primary assignee (display)
 
   @Column({ nullable: true })
-  assignedEmployeeId: string; // team member UUID for WhatsApp dispatch
+  assignedEmployeeId: string; // primary assignee UUID for WhatsApp dispatch
+
+  @Column({ type: 'simple-json', nullable: true })
+  assignedEmployeeIds: string[]; // multi-employee UUIDs
+
+  @Column({ nullable: true })
+  sourceLeadId: string; // lead this booking was converted from
 
   @Column({ nullable: true })
   notes: string;

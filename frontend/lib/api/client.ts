@@ -65,9 +65,11 @@ export const leadsApi = {
   kanban:  () => get<{ status: string; leads: Lead[] }[]>('/leads/kanban'),
   stats:   () => get<any>('/leads/stats'),
   one:     (id: string) => get<Lead>(`/leads/${id}`),
-  create:  (data: Partial<Lead>) => post<Lead>('/leads', data),
-  update:  (id: string, data: Partial<Lead>) => patch<Lead>(`/leads/${id}`, data),
-  remove:  (id: string) => del<void>(`/leads/${id}`),
+  create:           (data: Partial<Lead>) => post<Lead>('/leads', data),
+  update:           (id: string, data: Partial<Lead>) => patch<Lead>(`/leads/${id}`, data),
+  remove:           (id: string) => del<void>(`/leads/${id}`),
+  markWon:          (id: string) => patch<{ lead: Lead; bookingCreated: boolean }>(`/leads/${id}/mark-won`, {}),
+  convertToBooking: (id: string) => post<{ id: string }>(`/leads/${id}/convert-to-booking`, {}),
 }
 
 // ── Inbox ─────────────────────────────────────────────────────────

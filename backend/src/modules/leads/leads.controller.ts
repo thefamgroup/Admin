@@ -17,4 +17,6 @@ export class LeadsController {
   @Post() create(@Body() dto: CreateLeadDto) { return this.svc.create(dto); }
   @Patch(':id') update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLeadDto) { return this.svc.update(id, dto); }
   @Delete(':id') remove(@Param('id', ParseUUIDPipe) id: string) { return this.svc.remove(id); }
+  @Patch(':id/mark-won') markWon(@Param('id', ParseUUIDPipe) id: string) { return this.svc.markWon(id); }
+  @Post(':id/convert-to-booking') convertToBooking(@Param('id', ParseUUIDPipe) id: string) { return this.svc.convertToBooking(id); }
 }

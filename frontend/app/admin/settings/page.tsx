@@ -28,6 +28,7 @@ type Setting = {
 const GROUPS = [
   { key: 'business', label: 'Business' },
   { key: 'notifications', label: 'Notifications' },
+  { key: 'bookings', label: 'Bookings' },
   { key: 'pricing', label: 'Pricing' },
   { key: 'calculator', label: 'Calculator' },
 ]
@@ -38,6 +39,7 @@ const BOOL_KEYS = [
   'notify.newMessage',
   'notify.quoteOverdue',
   'pricing.vat',
+  'booking.auto_convert',
 ]
 
 const CALCULATOR_SECTIONS = [

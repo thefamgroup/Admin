@@ -44,6 +44,8 @@ const DEFAULTS: Omit<Setting, 'id' | 'updatedAt'>[] = [
   { key: 'calculator.cond.average',    value: '1.0',  label: 'Average',     group: 'calculator' },
   { key: 'calculator.cond.heavy',      value: '1.28', label: 'Heavy',       group: 'calculator' },
   { key: 'calculator.cond.very-heavy', value: '1.55', label: 'Very Heavy',  group: 'calculator' },
+  // Bookings
+  { key: 'booking.auto_convert', value: 'false', label: 'Auto-create booking when lead is marked as Won', group: 'bookings' },
   // Add-on prices (£)
   { key: 'calculator.addon.oven',       value: '45', label: 'Oven Clean',        group: 'calculator' },
   { key: 'calculator.addon.fridge',     value: '25', label: 'Fridge/Freezer',    group: 'calculator' },
