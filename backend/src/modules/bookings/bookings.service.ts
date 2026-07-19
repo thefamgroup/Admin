@@ -30,6 +30,15 @@ export class BookingsService {
     return { items, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
+  findByPhone(phone: string) {
+    const clean = phone.replace(/\D/g, '');
+    return this.repo.find({
+      where: { clientPhone: Like(`%${clean}`) },
+      order: { scheduledAt: 'DESC' },
+      take: 10,
+    });
+  }
+
   async findOne(id: string) {
     const booking = await this.repo.findOne({ where: { id } });
     if (!booking) throw new NotFoundException('Booking not found');

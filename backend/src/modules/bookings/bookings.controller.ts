@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Patch, Delete,
+  Controller, Get, Post, Patch, Delete,
   Body, Param, Query, UseGuards, ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
@@ -23,6 +23,9 @@ export class BookingsController {
   @Get('stats')
   @ApiOperation({ summary: 'Booking status counts for dashboard' })
   getStats() { return this.service.getStats(); }
+
+  @Get('by-phone/:phone')
+  findByPhone(@Param('phone') phone: string) { return this.service.findByPhone(phone); }
 
   @Get('calendar')
   @ApiOperation({ summary: 'Get bookings for a given month' })

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Send, Check, BadgePoundSterling } from 'lucide-react'
+import { Plus, Send, Check, BadgePoundSterling, MessageCircle, Loader2 } from 'lucide-react'
 
 import { quotesApi } from '@/lib/api/client'
 import { formatCurrency } from '@/lib/utils'
@@ -70,6 +70,7 @@ export default function QuotesPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [sending, setSending] = useState<string | null>(null)
 
   const load = (status: string) => {
     setLoading(true)
@@ -87,6 +88,19 @@ export default function QuotesPage() {
   const act = async (id: string, status: QuoteStatus) => {
     await quotesApi.update(id, { status })
     load(tab)
+  }
+
+  const sendWA = async (id: string) => {
+    setSending(id)
+    try {
+      const res = await quotesApi.sendWhatsApp(id)
+      if (res.sent) load(tab)
+      else alert('Failed to send — check WhatsApp credentials in Render env vars')
+    } catch {
+      alert('Error sending quote via WhatsApp')
+    } finally {
+      setSending(null)
+    }
   }
 
   const submit = async (e: React.FormEvent) => {
@@ -272,21 +286,26 @@ export default function QuotesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 border-green-600 hover:bg-green-50"
+                          onClick={() => sendWA(q.id)}
+                          disabled={sending === q.id}
+                          title="Send PDF quote via WhatsApp"
+                        >
+                          {sending === q.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <MessageCircle className="h-3.5 w-3.5" />}
+                          WhatsApp
+                        </Button>
                         {q.status === 'draft' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => act(q.id, 'sent')}
-                          >
+                          <Button size="sm" variant="outline" onClick={() => act(q.id, 'sent')}>
                             <Send className="h-3.5 w-3.5" /> Send
                           </Button>
                         )}
                         {q.status === 'sent' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => act(q.id, 'accepted')}
-                          >
+                          <Button size="sm" variant="outline" onClick={() => act(q.id, 'accepted')}>
                             <Check className="h-3.5 w-3.5" /> Accept
                           </Button>
                         )}

@@ -50,12 +50,13 @@ export const bookingsApi = {
 
 // ── Quotes ────────────────────────────────────────────────────────
 export const quotesApi = {
-  list:   (status?: string) => get<Quote[]>(`/quotes${status ? '?status=' + status : ''}`),
-  one:    (id: string) => get<Quote>(`/quotes/${id}`),
-  stats:  () => get<any>('/quotes/stats'),
-  create: (data: Partial<Quote>) => post<Quote>('/quotes', data),
-  update: (id: string, data: Partial<Quote>) => patch<Quote>(`/quotes/${id}`, data),
-  remove: (id: string) => del<void>(`/quotes/${id}`),
+  list:          (status?: string) => get<Quote[]>(`/quotes${status ? '?status=' + status : ''}`),
+  one:           (id: string) => get<Quote>(`/quotes/${id}`),
+  stats:         () => get<any>('/quotes/stats'),
+  create:        (data: Partial<Quote>) => post<Quote>('/quotes', data),
+  update:        (id: string, data: Partial<Quote>) => patch<Quote>(`/quotes/${id}`, data),
+  remove:        (id: string) => del<void>(`/quotes/${id}`),
+  sendWhatsApp:  (id: string) => post<{ sent: boolean }>(`/quotes/${id}/send-whatsapp`, {}),
 }
 
 // ── Leads ─────────────────────────────────────────────────────────
@@ -71,13 +72,21 @@ export const leadsApi = {
 
 // ── Inbox ─────────────────────────────────────────────────────────
 export const inboxApi = {
-  list:     (status?: string) => get<Message[]>(`/inbox${status ? '?status=' + status : ''}`),
-  one:      (id: string) => get<Message>(`/inbox/${id}`),
-  create:   (data: Partial<Message>) => post<Message>('/inbox', data),
-  update:   (id: string, data: Partial<Message>) => patch<Message>(`/inbox/${id}`, data),
-  markRead: (id: string) => patch<Message>(`/inbox/${id}/read`, {}),
-  unread:   () => get<number>('/inbox/unread-count'),
-  reply:    (id: string, text: string) => post<{ sent: boolean }>(`/inbox/${id}/reply`, { text }),
+  list:      (status?: string) => get<Message[]>(`/inbox${status ? '?status=' + status : ''}`),
+  one:       (id: string) => get<Message>(`/inbox/${id}`),
+  create:    (data: Partial<Message>) => post<Message>('/inbox', data),
+  update:    (id: string, data: Partial<Message>) => patch<Message>(`/inbox/${id}`, data),
+  markRead:  (id: string) => patch<Message>(`/inbox/${id}/read`, {}),
+  unread:    () => get<number>('/inbox/unread-count'),
+  reply:     (id: string, text: string) => post<{ sent: boolean }>(`/inbox/${id}/reply`, { text }),
+  assign:    (id: string, assignedTo: string) => patch<Message>(`/inbox/${id}/assign`, { assignedTo }),
+  byPhone:   (phone: string) => get<Message[]>(`/inbox/by-phone/${encodeURIComponent(phone)}`),
+}
+
+// ── Context lookups (for inbox customer panel) ────────────────────
+export const contextApi = {
+  leadsByPhone:    (phone: string) => get<any[]>(`/leads/by-phone/${encodeURIComponent(phone)}`),
+  bookingsByPhone: (phone: string) => get<any[]>(`/bookings/by-phone/${encodeURIComponent(phone)}`),
 }
 
 // ── Team ──────────────────────────────────────────────────────────

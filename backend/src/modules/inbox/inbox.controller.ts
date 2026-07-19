@@ -89,4 +89,19 @@ export class InboxController {
   ) {
     return this.svc.replyViaWhatsApp(id, dto.text);
   }
+
+  @ApiBearerAuth() @UseGuards(JwtAuthGuard)
+  @Patch(':id/assign')
+  assign(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('assignedTo') assignedTo: string,
+  ) {
+    return this.svc.assign(id, assignedTo);
+  }
+
+  @ApiBearerAuth() @UseGuards(JwtAuthGuard)
+  @Get('by-phone/:phone')
+  findByPhone(@Param('phone') phone: string) {
+    return this.svc.findByPhone(phone);
+  }
 }

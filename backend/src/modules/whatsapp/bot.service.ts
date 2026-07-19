@@ -12,62 +12,52 @@ import { LeadSource } from '../leads/entities/lead.entity';
 import { MessageSource } from '../inbox/entities/message.entity';
 import { BookingStatus } from '../bookings/entities/booking.entity';
 
+// ── Label maps ────────────────────────────────────────────────────────────────
+
 const SERVICE_LABELS: Record<string, string> = {
-  '1': 'regular',
-  '2': 'deep',
-  '3': 'eot',
-  '4': 'moveout',
-  '5': 'office',
-  '6': 'postconstruction',
-  '7': 'airbnb',
+  '1': 'regular', '2': 'deep', '3': 'eot',
+  '4': 'moveout', '5': 'office', '6': 'postconstruction', '7': 'airbnb',
+};
+
+const SERVICE_NAMES: Record<string, string> = {
+  regular: 'Regular Home Clean', deep: 'Deep Clean', eot: 'End of Tenancy',
+  moveout: 'Move In / Out', office: 'Office Clean',
+  postconstruction: 'Post-Build / Construction', airbnb: 'Airbnb / Short-Let',
 };
 
 const SIZE_LABELS: Record<string, string> = {
-  '1': 'studio',
-  '2': '1bed',
-  '3': '2bed',
-  '4': '3bed',
-  '5': '4bed',
+  '1': 'studio', '2': '1bed', '3': '2bed', '4': '3bed', '5': '4bed',
+};
+
+const SIZE_NAMES: Record<string, string> = {
+  studio: 'Studio', '1bed': '1 Bedroom', '2bed': '2 Bedrooms',
+  '3bed': '3 Bedrooms', '4bed': '4 Bedrooms+',
 };
 
 const FREQ_LABELS: Record<string, string> = {
-  '1': 'one-off',
-  '2': 'weekly',
-  '3': 'fortnightly',
-  '4': 'monthly',
+  '1': 'one-off', '2': 'weekly', '3': 'fortnightly', '4': 'monthly',
+};
+
+const FREQ_NAMES: Record<string, string> = {
+  'one-off': 'One-Off', weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly',
 };
 
 const COND_LABELS: Record<string, string> = {
-  '1': 'light',
-  '2': 'average',
-  '3': 'heavy',
-  '4': 'very-heavy',
+  '1': 'light', '2': 'average', '3': 'heavy', '4': 'very-heavy',
 };
-
-const MENU_TEXT = `👋 Hi! I'm the *thefamgroup* assistant.
-
-What can I help you with today?
-
-1️⃣ Get an instant price estimate
-2️⃣ Request a quote
-3️⃣ Make a booking
-4️⃣ FAQ & Support
-5️⃣ Talk to a human agent
-
-Reply with a number (1-5)`;
 
 const FAQ: Array<[string[], string]> = [
   [
     ['area', 'cover', 'location', 'manchester', 'crewe'],
-    `📍 We cover *Manchester & Crewe* and surrounding areas. Message us with your postcode and we'll confirm availability.`,
+    `📍 We cover *Manchester & Crewe* and surrounding areas. Message us your postcode and we'll confirm availability.`,
   ],
   [
     ['price', 'cost', 'charge', 'how much', 'rate'],
-    `💷 Our prices start from *£60* for a regular home clean.\n\nReply *1* for an instant personalised estimate, or *2* to request a quote.`,
+    `💷 Our prices start from *£60* for a regular home clean.\n\nTap *Price Estimate* for an instant personalised price, or *Request a Quote* for a formal quote.`,
   ],
   [
     ['book', 'booking', 'schedule', 'appoint'],
-    `📅 To book, reply *3* and we'll collect your details.\n\nOr call us on *07767 759 013*.`,
+    `📅 To book, tap *Make a Booking* and we'll collect your details.\n\nOr call us on *07767 759 013*.`,
   ],
   [
     ['dbs', 'check', 'safe', 'trust', 'insur'],
@@ -79,13 +69,17 @@ const FAQ: Array<[string[], string]> = [
   ],
   [
     ['oven', 'fridge', 'window', 'carpet', 'upholster', 'addon', 'extra'],
-    `✨ We offer add-on services including oven clean, fridge clean, window cleaning, carpet & upholstery cleaning and more.\n\nReply *1* for pricing that includes add-ons.`,
+    `✨ We offer add-on services including oven clean, fridge clean, window cleaning, carpet & upholstery cleaning and more.\n\nTap *Price Estimate* for pricing that includes add-ons.`,
   ],
   [
     ['eot', 'end of tenanc', 'deposit', 'landlord'],
-    `🔑 Our *End of Tenancy* clean is designed to help you get your deposit back. We clean to agency standards.\n\nReply *2* to get a quote.`,
+    `🔑 Our *End of Tenancy* clean is designed to help you get your deposit back. We clean to agency standards.\n\nTap *Request a Quote* to get a formal quote.`,
   ],
 ];
+
+const GLOBAL_RESETS = ['menu', 'hi', 'hello', 'hey', 'start', 'help', 'reset'];
+
+// ── Service ───────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class BotService {
@@ -103,478 +97,422 @@ export class BotService {
     private leadsService: LeadsService,
   ) {}
 
+  // ── Session helpers ───────────────────────────────────────────────────────
+
   private async getSession(phone: string): Promise<WaSession> {
-    let session = await this.sessionRepo.findOne({ where: { phone } });
-    if (!session) {
-      session = this.sessionRepo.create({ phone, state: 'IDLE', data: {} });
-      await this.sessionRepo.save(session);
+    let s = await this.sessionRepo.findOne({ where: { phone } });
+    if (!s) {
+      s = this.sessionRepo.create({ phone, state: 'IDLE', data: {} });
+      await this.sessionRepo.save(s);
     }
-    return session;
+    return s;
   }
 
-  private async saveSession(session: WaSession): Promise<void> {
-    await this.sessionRepo.save(session);
+  private async save(s: WaSession) { await this.sessionRepo.save(s); }
+
+  private async reset(s: WaSession) {
+    s.state = 'IDLE'; s.data = {}; s.inboxMessageId = null; s.activeJobRef = null;
+    await this.sessionRepo.save(s);
   }
 
-  private async resetSession(session: WaSession): Promise<void> {
-    session.state = 'IDLE';
-    session.data = {};
-    session.inboxMessageId = null;
-    session.activeJobRef = null;
-    await this.sessionRepo.save(session);
-  }
+  // ── Entry point ───────────────────────────────────────────────────────────
 
   async handleIncoming(
-    from: string,
-    senderName: string,
-    messageType: string,
-    text: string,
-    mediaId?: string,
+    from: string, senderName: string, _messageType: string, text: string, mediaId?: string,
   ): Promise<void> {
     const msg = (text || '').trim().toLowerCase();
-    this.logger.log(`[Bot] ← ${from} (${senderName}): "${msg}" [state will be resolved]`);
+    this.logger.log(`[Bot] ← ${from} (${senderName}): "${msg}"`);
 
-    // Check if sender is a registered employee
+    // Employee check
     const employee = await this.teamService.findByWhatsApp(from);
-    if (employee) {
-      await this.handleEmployeeMessage(from, employee, msg, mediaId);
-      return;
-    }
+    if (employee) { await this.handleEmployeeMessage(from, employee, msg, mediaId); return; }
 
     const session = await this.getSession(from);
-    this.logger.log(`[Bot] Session state for ${from}: ${session.state}`);
+    this.logger.log(`[Bot] Session: ${from} → ${session.state}`);
 
-    // Global escape: always allow reset keywords regardless of state
-    if (['menu', 'hi', 'hello', 'hey', 'start', 'help', 'reset'].includes(msg)) {
-      await this.sendMenu(session, from);
-      return;
+    // Global escape — always resets to menu regardless of state
+    if (GLOBAL_RESETS.includes(msg)) {
+      await this.sendMenu(session, from); return;
     }
 
-    // If agent is handling this conversation, store the message in the inbox thread
+    // AGENT state — forward customer messages to inbox thread
     if (session.state === 'AGENT') {
       if (session.inboxMessageId) {
-        await this.inboxService.appendToThread(
-          session.inboxMessageId,
-          `[Customer]: ${text}`,
-        );
+        await this.inboxService.appendToThread(session.inboxMessageId, `[Customer]: ${text}`);
       }
       return;
     }
 
-    // Route to correct state handler
-    await this.routeState(session, from, senderName, msg, messageType, mediaId);
+    await this.route(session, from, senderName, msg);
   }
 
-  private async routeState(
-    session: WaSession,
-    from: string,
-    senderName: string,
-    msg: string,
-    messageType: string,
-    mediaId?: string,
+  // ── Router ────────────────────────────────────────────────────────────────
+
+  private async route(
+    s: WaSession, from: string, senderName: string, msg: string,
   ): Promise<void> {
-    const state = session.state;
-
-    // Global: "menu" or "hi/hello/hey" always returns to menu
-    if (['menu', 'hi', 'hello', 'hey', 'start', 'help'].includes(msg)) {
-      await this.sendMenu(session, from);
-      return;
-    }
-
-    switch (state) {
-      case 'IDLE':
-        await this.sendMenu(session, from);
-        break;
-
-      case 'MENU':
-        await this.handleMenuChoice(session, from, senderName, msg);
-        break;
-
-      case 'PRICING_SERVICE':
-        await this.handlePricingService(session, from, msg);
-        break;
-      case 'PRICING_SIZE':
-        await this.handlePricingSize(session, from, msg);
-        break;
-      case 'PRICING_FREQ':
-        await this.handlePricingFreq(session, from, msg);
-        break;
-      case 'PRICING_COND':
-        await this.handlePricingCond(session, from, msg);
-        break;
-
-      case 'QUOTE_SERVICE':
-        await this.handleQuoteService(session, from, msg);
-        break;
-      case 'QUOTE_SIZE':
-        await this.handleQuoteSize(session, from, msg);
-        break;
-      case 'QUOTE_FREQ':
-        await this.handleQuoteFreq(session, from, msg);
-        break;
-      case 'QUOTE_NAME':
-        await this.handleQuoteName(session, from, msg);
-        break;
-      case 'QUOTE_EMAIL':
-        await this.handleQuoteEmail(session, from, msg);
-        break;
-      case 'QUOTE_PHONE':
-        await this.handleQuotePhone(session, from, senderName, msg);
-        break;
-
-      case 'SUPPORT':
-        await this.handleSupport(session, from, senderName, msg);
-        break;
-
-      default:
-        await this.sendMenu(session, from);
+    switch (s.state) {
+      case 'IDLE':          return this.sendMenu(s, from);
+      case 'MENU':          return this.handleMenuChoice(s, from, senderName, msg);
+      case 'PRICING_SERVICE': return this.handlePricingService(s, from, msg);
+      case 'PRICING_SIZE':    return this.handlePricingSize(s, from, msg);
+      case 'PRICING_FREQ':    return this.handlePricingFreq(s, from, msg);
+      case 'PRICING_COND':    return this.handlePricingCond(s, from, msg);
+      case 'PRICING_DONE':    return this.handlePricingDone(s, from, senderName, msg);
+      case 'QUOTE_SERVICE':   return this.handleQuoteService(s, from, msg);
+      case 'QUOTE_SIZE':      return this.handleQuoteSize(s, from, msg);
+      case 'QUOTE_FREQ':      return this.handleQuoteFreq(s, from, msg);
+      case 'QUOTE_NAME':      return this.handleQuoteName(s, from, msg);
+      case 'QUOTE_EMAIL':     return this.handleQuoteEmail(s, from, msg);
+      case 'QUOTE_PHONE':     return this.handleQuotePhone(s, from, senderName, msg);
+      case 'SUPPORT':         return this.handleSupport(s, from, senderName, msg);
+      default:                return this.sendMenu(s, from);
     }
   }
 
-  private async sendMenu(session: WaSession, from: string): Promise<void> {
-    session.state = 'MENU';
-    session.data = {};
-    await this.saveSession(session);
-    await this.wa.sendText(from, MENU_TEXT);
+  // ── Menu ─────────────────────────────────────────────────────────────────
+
+  private async sendMenu(s: WaSession, from: string): Promise<void> {
+    s.state = 'MENU'; s.data = {};
+    await this.save(s);
+    await this.wa.sendInteractiveList(
+      from,
+      `Hi! I'm the *thefamgroup* assistant 👋\n\nWhat can I help you with today?`,
+      'View options',
+      [
+        {
+          title: 'Services',
+          rows: [
+            { id: '1', title: '💡 Price Estimate',   description: 'Get an instant price' },
+            { id: '2', title: '📋 Request a Quote',  description: 'Formal quote sent to you' },
+            { id: '3', title: '📅 Make a Booking',   description: 'Book a clean with us' },
+          ],
+        },
+        {
+          title: 'Help & Support',
+          rows: [
+            { id: '4', title: '❓ FAQ & Support',    description: 'Get answers fast' },
+            { id: '5', title: '💬 Customer Support', description: 'Talk to our team' },
+          ],
+        },
+      ],
+      'thefamgroup',
+      'Family · Community · Care',
+    );
   }
 
   private async handleMenuChoice(
-    session: WaSession,
-    from: string,
-    senderName: string,
-    msg: string,
+    s: WaSession, from: string, senderName: string, msg: string,
   ): Promise<void> {
     switch (msg) {
       case '1':
-        session.state = 'PRICING_SERVICE';
-        session.data = {};
-        await this.saveSession(session);
-        await this.wa.sendText(
-          from,
-          `💡 *Instant Price Estimate*\n\nWhat type of cleaning do you need?\n\n1️⃣ Regular Home Clean\n2️⃣ Deep Clean\n3️⃣ End of Tenancy\n4️⃣ Move In / Out\n5️⃣ Office Clean\n6️⃣ Post-Build / Construction\n7️⃣ Airbnb / Short-Let`,
-        );
-        break;
+        s.state = 'PRICING_SERVICE'; s.data = {}; await this.save(s);
+        return this.sendServiceList(from, '💡 *Instant Price Estimate*\n\nWhat type of cleaning do you need?');
 
       case '2':
-        session.state = 'QUOTE_SERVICE';
-        session.data = {};
-        await this.saveSession(session);
-        await this.wa.sendText(
-          from,
-          `📋 *Quote Request*\n\nWhat type of service do you need?\n\n1️⃣ Regular Home Clean\n2️⃣ Deep Clean\n3️⃣ End of Tenancy\n4️⃣ Move In / Out\n5️⃣ Office Clean\n6️⃣ Post-Build / Construction\n7️⃣ Airbnb / Short-Let`,
-        );
-        break;
+        s.state = 'QUOTE_SERVICE'; s.data = {}; await this.save(s);
+        return this.sendServiceList(from, '📋 *Request a Quote*\n\nWhat type of service do you need?');
 
       case '3':
-        // Direct to contact for booking
-        await this.wa.sendText(
+        await this.wa.sendInteractiveButtons(
           from,
-          `📅 *Make a Booking*\n\nTo complete your booking, please:\n\n📞 Call us: *07767 759 013*\n📧 Email: *info@thefamgroup.uk*\n🌐 Website: *www.thefamgroup.uk/quote*\n\nOur team will confirm your booking and send you a receipt.\n\nReply *menu* to go back.`,
+          `📅 *Make a Booking*\n\nWe'll get everything arranged for you. How would you like to proceed?`,
+          [
+            { id: '2', title: 'Get a Quote First' },
+            { id: '5', title: 'Talk to Support' },
+          ],
+          'Book a Clean',
+          'Mon–Sat 8am–6pm',
         );
-        break;
+        return;
 
       case '4':
-        session.state = 'SUPPORT';
-        await this.saveSession(session);
-        await this.wa.sendText(
+        s.state = 'SUPPORT'; await this.save(s);
+        await this.wa.sendInteractiveButtons(
           from,
-          `🙋 *FAQ & Support*\n\nAsk me anything! For example:\n• What areas do you cover?\n• How much does a deep clean cost?\n• Are your cleaners DBS checked?\n• Can I cancel my booking?\n\nOr reply *5* to speak to a human agent.`,
+          `🙋 *FAQ & Support*\n\nAsk me anything, or tap below:\n\n• What areas do you cover?\n• How much does a deep clean cost?\n• Are your cleaners DBS checked?\n• Can I cancel my booking?`,
+          [
+            { id: '5', title: 'Talk to Support' },
+          ],
+          'FAQ & Support',
         );
-        break;
+        return;
 
       case '5':
-        await this.connectToAgent(session, from, senderName);
-        break;
+        return this.connectToAgent(s, from, senderName);
 
       default:
-        await this.wa.sendText(
-          from,
-          `Please reply with a number between 1 and 5.\n\n${MENU_TEXT}`,
-        );
+        await this.wa.sendText(from, `Please choose an option from the menu.`);
+        return this.sendMenu(s, from);
     }
   }
 
-  // ── Pricing flow ────────────────────────────────────────────────────
+  // ── Shared: service list ──────────────────────────────────────────────────
 
-  private async handlePricingService(
-    session: WaSession,
-    from: string,
-    msg: string,
-  ): Promise<void> {
+  private async sendServiceList(from: string, header: string): Promise<void> {
+    await this.wa.sendInteractiveList(
+      from,
+      header,
+      'Choose service',
+      [
+        {
+          title: 'Residential',
+          rows: [
+            { id: '1', title: 'Regular Home Clean',  description: 'Weekly, fortnightly, monthly' },
+            { id: '2', title: 'Deep Clean',           description: 'One-off intensive clean' },
+            { id: '3', title: 'End of Tenancy',       description: 'Get your deposit back' },
+            { id: '4', title: 'Move In / Out',        description: 'New home ready to go' },
+          ],
+        },
+        {
+          title: 'Specialist',
+          rows: [
+            { id: '5', title: 'Office Clean',         description: 'Professional workplace' },
+            { id: '6', title: 'Post-Build Clean',     description: 'After construction work' },
+            { id: '7', title: 'Airbnb / Short-Let',   description: 'Between-guest turnaround' },
+          ],
+        },
+      ],
+    );
+  }
+
+  // ── Pricing flow ──────────────────────────────────────────────────────────
+
+  private async handlePricingService(s: WaSession, from: string, msg: string): Promise<void> {
     const service = SERVICE_LABELS[msg];
-    if (!service) {
-      await this.wa.sendText(from, `Please reply with a number 1–7.`);
-      return;
-    }
-    session.data = { ...session.data, service };
-    session.state = 'PRICING_SIZE';
-    await this.saveSession(session);
-    await this.wa.sendText(
-      from,
-      `🏠 *Property Size*\n\n1️⃣ Studio\n2️⃣ 1 Bedroom\n3️⃣ 2 Bedrooms\n4️⃣ 3 Bedrooms\n5️⃣ 4 Bedrooms+`,
-    );
+    if (!service) { await this.wa.sendText(from, `Please select a service from the list.`); return; }
+    s.data = { ...s.data, service }; s.state = 'PRICING_SIZE'; await this.save(s);
+    await this.sendSizeList(from);
   }
 
-  private async handlePricingSize(
-    session: WaSession,
-    from: string,
-    msg: string,
-  ): Promise<void> {
+  private async handlePricingSize(s: WaSession, from: string, msg: string): Promise<void> {
     const size = SIZE_LABELS[msg];
-    if (!size) {
-      await this.wa.sendText(from, `Please reply with a number 1–5.`);
-      return;
-    }
-    session.data = { ...session.data, size };
-    session.state = 'PRICING_FREQ';
-    await this.saveSession(session);
-    await this.wa.sendText(
-      from,
-      `🔁 *How often?*\n\n1️⃣ One-Off\n2️⃣ Weekly (20% off)\n3️⃣ Fortnightly (15% off)\n4️⃣ Monthly (10% off)`,
-    );
+    if (!size) { await this.wa.sendText(from, `Please select a size from the list.`); return; }
+    s.data = { ...s.data, size }; s.state = 'PRICING_FREQ'; await this.save(s);
+    await this.sendFreqList(from);
   }
 
-  private async handlePricingFreq(
-    session: WaSession,
-    from: string,
-    msg: string,
-  ): Promise<void> {
+  private async handlePricingFreq(s: WaSession, from: string, msg: string): Promise<void> {
     const freq = FREQ_LABELS[msg];
-    if (!freq) {
-      await this.wa.sendText(from, `Please reply with a number 1–4.`);
-      return;
-    }
-    session.data = { ...session.data, freq };
-    session.state = 'PRICING_COND';
-    await this.saveSession(session);
-    await this.wa.sendText(
-      from,
-      `🧹 *Current condition of the property?*\n\n1️⃣ Light (well maintained)\n2️⃣ Average (normal condition)\n3️⃣ Heavy (needs extra work)\n4️⃣ Very Heavy (significant build-up)`,
-    );
+    if (!freq) { await this.wa.sendText(from, `Please select a frequency from the list.`); return; }
+    s.data = { ...s.data, freq }; s.state = 'PRICING_COND'; await this.save(s);
+    await this.sendCondList(from);
   }
 
-  private async handlePricingCond(
-    session: WaSession,
-    from: string,
-    msg: string,
-  ): Promise<void> {
+  private async handlePricingCond(s: WaSession, from: string, msg: string): Promise<void> {
     const cond = COND_LABELS[msg];
-    if (!cond) {
-      await this.wa.sendText(from, `Please reply with a number 1–4.`);
-      return;
-    }
+    if (!cond) { await this.wa.sendText(from, `Please select a condition from the list.`); return; }
 
-    const { service, size, freq } = session.data;
+    const { service, size, freq } = s.data;
     const pricing = await this.settingsService.getPricingConfig();
     const bp = pricing.BASE_PRICES as Record<string, number>;
     const sm = pricing.SIZE_MULT as Record<string, number>;
     const fm = pricing.FREQ_MULT as Record<string, number>;
     const cm = pricing.COND_MULT as Record<string, number>;
+    const total = Math.round((bp[service] ?? 80) * (sm[size] ?? 1) * (fm[freq] ?? 1) * (cm[cond] ?? 1));
 
-    const base = bp[service] ?? 80;
-    const sizeM = sm[size] ?? 1;
-    const freqM = fm[freq] ?? 1;
-    const condM = cm[cond] ?? 1;
-    const total = Math.round(base * sizeM * freqM * condM);
+    s.data = { ...s.data, cond, estimate: total };
+    s.state = 'PRICING_DONE';
+    await this.save(s);
 
-    const serviceNames: Record<string, string> = {
-      regular: 'Regular Home Clean',
-      deep: 'Deep Clean',
-      eot: 'End of Tenancy',
-      moveout: 'Move In / Out',
-      office: 'Office Clean',
-      postconstruction: 'Post-Build / Construction',
-      airbnb: 'Airbnb / Short-Let',
-    };
-
-    await this.wa.sendText(
+    await this.wa.sendInteractiveButtons(
       from,
-      `💷 *Your Estimate*\n\n*${serviceNames[service] || service}*\n${size} · ${freq} · ${cond} condition\n\n*Estimated Price: £${total}*\n\n_This is an estimate only. Final price confirmed before booking._\n\nWould you like to:\n*1* — Request a formal quote\n*2* — Speak to our team\n*menu* — Back to main menu`,
+      `🏷️ *Your Estimate*\n\n*${SERVICE_NAMES[service] || service}*\n${SIZE_NAMES[size] || size} · ${FREQ_NAMES[freq] || freq} · ${cond} condition\n\n*Estimated Price: £${total}*\n\n_This is an estimate only. Final price confirmed before booking._`,
+      [
+        { id: '1', title: 'Get Formal Quote' },
+        { id: '5', title: 'Talk to Support' },
+        { id: 'menu', title: 'Main Menu' },
+      ],
+      'Your Price Estimate',
+      'thefamgroup.uk',
     );
-
-    session.state = 'MENU';
-    session.data = {};
-    await this.saveSession(session);
   }
 
-  // ── Quote flow ──────────────────────────────────────────────────────
-
-  private async handleQuoteService(
-    session: WaSession,
-    from: string,
-    msg: string,
+  private async handlePricingDone(
+    s: WaSession, from: string, senderName: string, msg: string,
   ): Promise<void> {
+    if (msg === '1') {
+      // Pre-fill quote data from pricing flow, skip service/size/freq questions
+      s.state = 'QUOTE_NAME'; await this.save(s);
+      await this.wa.sendText(from, `📋 *Great! Let's get your formal quote.*\n\n👤 What is your *full name*?`);
+    } else if (msg === '5' || msg === 'support') {
+      await this.connectToAgent(s, from, senderName);
+    } else {
+      await this.sendMenu(s, from);
+    }
+  }
+
+  // ── Quote flow ────────────────────────────────────────────────────────────
+
+  private async handleQuoteService(s: WaSession, from: string, msg: string): Promise<void> {
     const service = SERVICE_LABELS[msg];
-    if (!service) {
-      await this.wa.sendText(from, `Please reply with a number 1–7.`);
-      return;
-    }
-    session.data = { ...session.data, service };
-    session.state = 'QUOTE_SIZE';
-    await this.saveSession(session);
-    await this.wa.sendText(
-      from,
-      `🏠 *Property Size*\n\n1️⃣ Studio\n2️⃣ 1 Bedroom\n3️⃣ 2 Bedrooms\n4️⃣ 3 Bedrooms\n5️⃣ 4 Bedrooms+`,
-    );
+    if (!service) { await this.wa.sendText(from, `Please select a service from the list.`); return; }
+    s.data = { ...s.data, service }; s.state = 'QUOTE_SIZE'; await this.save(s);
+    await this.sendSizeList(from);
   }
 
-  private async handleQuoteSize(
-    session: WaSession,
-    from: string,
-    msg: string,
-  ): Promise<void> {
+  private async handleQuoteSize(s: WaSession, from: string, msg: string): Promise<void> {
     const size = SIZE_LABELS[msg];
-    if (!size) {
-      await this.wa.sendText(from, `Please reply with a number 1–5.`);
-      return;
-    }
-    session.data = { ...session.data, size };
-    session.state = 'QUOTE_FREQ';
-    await this.saveSession(session);
-    await this.wa.sendText(
-      from,
-      `🔁 *How often?*\n\n1️⃣ One-Off\n2️⃣ Weekly\n3️⃣ Fortnightly\n4️⃣ Monthly`,
-    );
+    if (!size) { await this.wa.sendText(from, `Please select a size from the list.`); return; }
+    s.data = { ...s.data, size }; s.state = 'QUOTE_FREQ'; await this.save(s);
+    await this.sendFreqList(from);
   }
 
-  private async handleQuoteFreq(
-    session: WaSession,
-    from: string,
-    msg: string,
-  ): Promise<void> {
+  private async handleQuoteFreq(s: WaSession, from: string, msg: string): Promise<void> {
     const freq = FREQ_LABELS[msg];
-    if (!freq) {
-      await this.wa.sendText(from, `Please reply with a number 1–4.`);
-      return;
-    }
-    session.data = { ...session.data, freq };
-    session.state = 'QUOTE_NAME';
-    await this.saveSession(session);
+    if (!freq) { await this.wa.sendText(from, `Please select a frequency from the list.`); return; }
+    s.data = { ...s.data, freq }; s.state = 'QUOTE_NAME'; await this.save(s);
     await this.wa.sendText(from, `👤 What is your *full name*?`);
   }
 
-  private async handleQuoteName(
-    session: WaSession,
-    from: string,
-    msg: string,
-  ): Promise<void> {
-    session.data = { ...session.data, name: msg };
-    session.state = 'QUOTE_EMAIL';
-    await this.saveSession(session);
+  private async handleQuoteName(s: WaSession, from: string, msg: string): Promise<void> {
+    s.data = { ...s.data, name: msg }; s.state = 'QUOTE_EMAIL'; await this.save(s);
     await this.wa.sendText(from, `📧 What is your *email address*?`);
   }
 
-  private async handleQuoteEmail(
-    session: WaSession,
-    from: string,
-    msg: string,
-  ): Promise<void> {
+  private async handleQuoteEmail(s: WaSession, from: string, msg: string): Promise<void> {
     if (!msg.includes('@')) {
-      await this.wa.sendText(from, `That doesn't look like a valid email. Please try again.`);
-      return;
+      await this.wa.sendText(from, `That doesn't look like a valid email. Please try again.`); return;
     }
-    session.data = { ...session.data, email: msg };
-    session.state = 'QUOTE_PHONE';
-    await this.saveSession(session);
-    await this.wa.sendText(
+    s.data = { ...s.data, email: msg }; s.state = 'QUOTE_PHONE'; await this.save(s);
+    await this.wa.sendInteractiveButtons(
       from,
-      `📞 What is your *phone number*? (Or reply *same* to use this WhatsApp number)`,
+      `📞 What is your *contact number*?`,
+      [{ id: 'same', title: 'Use This Number' }],
+      'Phone Number',
+      'Or type your number below',
     );
   }
 
   private async handleQuotePhone(
-    session: WaSession,
-    from: string,
-    senderName: string,
-    msg: string,
+    s: WaSession, from: string, senderName: string, msg: string,
   ): Promise<void> {
     const phone = msg === 'same' ? from : msg;
-    const { service, size, freq, name, email } = session.data;
+    const { service, size, freq, name, email } = s.data;
 
     const pricing = await this.settingsService.getPricingConfig();
-    const bp2 = pricing.BASE_PRICES as Record<string, number>;
-    const sm2 = pricing.SIZE_MULT as Record<string, number>;
-    const fm2 = pricing.FREQ_MULT as Record<string, number>;
-    const base = bp2[service] ?? 80;
-    const sizeM = sm2[size] ?? 1;
-    const freqM = fm2[freq] ?? 1;
-    const total = Math.round(base * sizeM * freqM);
+    const bp = pricing.BASE_PRICES as Record<string, number>;
+    const sm = pricing.SIZE_MULT as Record<string, number>;
+    const fm = pricing.FREQ_MULT as Record<string, number>;
+    const total = s.data.estimate ?? Math.round((bp[service] ?? 80) * (sm[size] ?? 1) * (fm[freq] ?? 1));
 
-    // Create lead
+    // Create lead in admin
     try {
       await this.leadsService.create({
-        name: name || senderName,
-        email,
-        phone,
+        name: name || senderName, email, phone,
         source: LeadSource.WHATSAPP,
         serviceInterest: service,
         estimatedValue: total,
-        notes: `WhatsApp bot quote request\nSize: ${size} · Frequency: ${freq} · Estimate: £${total}`,
+        notes: `WhatsApp bot quote\nSize: ${size || 'n/a'} · Freq: ${freq || 'n/a'} · Estimate: £${total}`,
       });
     } catch (err) {
       this.logger.error(`[Bot] Failed to create lead: ${err}`);
     }
 
-    // Create inbox message
+    // Create inbox thread
     try {
       const inboxMsg = await this.inboxService.create({
-        senderName: name || senderName,
-        senderEmail: email,
-        senderPhone: phone,
-        source: MessageSource.WHATSAPP,
-        waFrom: from,
-        subject: `WhatsApp Quote Request — ${service} · ${size} · ${freq}`,
-        body: `Service: ${service}\nSize: ${size}\nFrequency: ${freq}\nEstimate: £${total}\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone}`,
+        senderName: name || senderName, senderEmail: email, senderPhone: phone,
+        source: MessageSource.WHATSAPP, waFrom: from,
+        subject: `WhatsApp Quote Request — ${SERVICE_NAMES[service] || service}`,
+        body: `Service: ${SERVICE_NAMES[service] || service}\nSize: ${SIZE_NAMES[size] || size}\nFrequency: ${FREQ_NAMES[freq] || freq}\nEstimate: £${total}\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone}`,
       });
-      session.inboxMessageId = inboxMsg.id;
+      s.inboxMessageId = inboxMsg.id;
     } catch (err) {
       this.logger.error(`[Bot] Failed to create inbox message: ${err}`);
     }
 
     await this.wa.sendText(
       from,
-      `✅ *Quote Request Received!*\n\nThank you, ${name}!\n\nWe'll review your request and get back to you within *2 hours* with a confirmed quote.\n\n📋 *Summary:*\nService: ${service}\nSize: ${size}\nFrequency: ${freq}\nEstimate: £${total}\n\n📞 For urgent enquiries: *07767 759 013*\n\nReply *menu* at any time to start over.`,
+      `✅ *Quote Request Received!*\n\nThank you, ${name}! 🎉\n\nWe'll review your details and get back to you within *2 hours* with a confirmed quote — and we'll send it directly to this WhatsApp.\n\n📋 *Your Summary:*\n• Service: ${SERVICE_NAMES[service] || service}\n• Size: ${SIZE_NAMES[size] || size || 'n/a'}\n• Frequency: ${FREQ_NAMES[freq] || freq || 'n/a'}\n• Estimate: £${total}\n\n📞 Urgent? Call us: *07767 759 013*\n\nReply *menu* at any time to start over.`,
     );
 
-    await this.resetSession(session);
+    await this.reset(s);
   }
 
-  // ── Support / FAQ flow ───────────────────────────────────────────────
+  // ── Shared list senders ───────────────────────────────────────────────────
+
+  private async sendSizeList(from: string): Promise<void> {
+    await this.wa.sendInteractiveList(
+      from,
+      `🏠 How big is the property?`,
+      'Select size',
+      [{
+        title: 'Property Size',
+        rows: [
+          { id: '1', title: 'Studio',       description: 'Up to 35m²' },
+          { id: '2', title: '1 Bedroom',    description: 'Up to 55m²' },
+          { id: '3', title: '2 Bedrooms',   description: 'Up to 75m²' },
+          { id: '4', title: '3 Bedrooms',   description: 'Up to 95m²' },
+          { id: '5', title: '4 Bedrooms+',  description: '100m²+' },
+        ],
+      }],
+    );
+  }
+
+  private async sendFreqList(from: string): Promise<void> {
+    await this.wa.sendInteractiveList(
+      from,
+      `🔁 How often do you need the service?`,
+      'Select frequency',
+      [{
+        title: 'Frequency',
+        rows: [
+          { id: '1', title: 'One-Off',        description: 'Single visit' },
+          { id: '2', title: 'Weekly',          description: 'Save 20%' },
+          { id: '3', title: 'Fortnightly',     description: 'Save 15%' },
+          { id: '4', title: 'Monthly',         description: 'Save 10%' },
+        ],
+      }],
+    );
+  }
+
+  private async sendCondList(from: string): Promise<void> {
+    await this.wa.sendInteractiveList(
+      from,
+      `🧹 What is the current condition of the property?`,
+      'Select condition',
+      [{
+        title: 'Condition',
+        rows: [
+          { id: '1', title: 'Light',      description: 'Well maintained' },
+          { id: '2', title: 'Average',    description: 'Normal condition' },
+          { id: '3', title: 'Heavy',      description: 'Needs extra work' },
+          { id: '4', title: 'Very Heavy', description: 'Significant build-up' },
+        ],
+      }],
+    );
+  }
+
+  // ── Support / FAQ ─────────────────────────────────────────────────────────
 
   private async handleSupport(
-    session: WaSession,
-    from: string,
-    senderName: string,
-    msg: string,
+    s: WaSession, from: string, senderName: string, msg: string,
   ): Promise<void> {
-    if (msg === '5' || msg === 'agent' || msg === 'human' || msg === 'speak') {
-      await this.connectToAgent(session, from, senderName);
-      return;
+    if (['5', 'support', 'agent', 'human', 'speak', 'rep'].includes(msg)) {
+      return this.connectToAgent(s, from, senderName);
     }
 
     for (const [keywords, answer] of FAQ) {
       if (keywords.some((kw) => msg.includes(kw))) {
-        await this.wa.sendText(
+        await this.wa.sendInteractiveButtons(
           from,
-          `${answer}\n\n_Reply *menu* for more options or *5* to speak to a person._`,
+          `${answer}`,
+          [
+            { id: '5', title: 'Talk to Support' },
+            { id: 'menu', title: 'Main Menu' },
+          ],
         );
         return;
       }
     }
 
-    // No FAQ match — escalate to agent
-    await this.wa.sendText(
-      from,
-      `🤔 I'm not sure I can answer that one. Let me connect you with a member of our team.\n\n_Please hold on..._`,
-    );
-    await this.connectToAgent(session, from, senderName);
+    // No FAQ match — escalate
+    await this.wa.sendText(from, `🤔 Let me connect you with a customer support rep.\n\n_Please hold on..._`);
+    await this.connectToAgent(s, from, senderName);
   }
 
-  private async connectToAgent(
-    session: WaSession,
-    from: string,
-    senderName: string,
-  ): Promise<void> {
+  private async connectToAgent(s: WaSession, from: string, senderName: string): Promise<void> {
     try {
       const inboxMsg = await this.inboxService.create({
         senderName: senderName || from,
@@ -582,23 +520,23 @@ export class BotService {
         source: MessageSource.WHATSAPP,
         waFrom: from,
         subject: `WhatsApp Live Chat — ${senderName || from}`,
-        body: `Customer requested to speak with an agent via WhatsApp.\n\nWhatsApp: ${from}\nName: ${senderName || 'Unknown'}`,
+        body: `Customer requested to speak with a customer support rep.\n\nWhatsApp: ${from}\nName: ${senderName || 'Unknown'}`,
       });
-      session.inboxMessageId = inboxMsg.id;
+      s.inboxMessageId = inboxMsg.id;
     } catch (err) {
       this.logger.error(`[Bot] Failed to create agent inbox thread: ${err}`);
     }
 
-    session.state = 'AGENT';
-    await this.saveSession(session);
+    s.state = 'AGENT';
+    await this.save(s);
 
     await this.wa.sendText(
       from,
-      `🙋 *You're now connected with our team!*\n\nA member of staff will respond shortly. During business hours, we aim to reply within 15 minutes.\n\n⏰ Business hours: Mon–Sat 8am–6pm\n\nIn the meantime, you can also:\n📞 Call: *07767 759 013*\n📧 Email: *info@thefamgroup.uk*`,
+      `👤 *You're now connected with our customer support team!*\n\nA team member will respond shortly. During business hours, we aim to reply within *15 minutes*.\n\n⏰ Business hours: Mon–Sat 8am–6pm\n\n📞 Urgent? Call: *07767 759 013*\n📧 Email: *info@thefamgroup.uk*`,
     );
   }
 
-  // ── Employee command handling ─────────────────────────────────────────
+  // ── Employee commands ─────────────────────────────────────────────────────
 
   private async handleEmployeeMessage(
     from: string,
@@ -628,14 +566,10 @@ export class BotService {
     if (declineMatch) {
       const ref = declineMatch[1].toUpperCase();
       const booking = await this.bookingsService.findByShortRef(ref);
-      if (!booking) {
-        await this.wa.sendText(from, `❌ Job ref *${ref}* not found.`);
-        return;
-      }
+      if (!booking) { await this.wa.sendText(from, `❌ Job ref *${ref}* not found.`); return; }
       await this.bookingsService.updateStatus(booking.id, BookingStatus.PENDING);
       await this.bookingsService.clearAssignment(booking.id);
       await this.teamService.incrementJobCancelled(employee.id);
-      // Create inbox alert for admin
       await this.inboxService.create({
         senderName: `${employee.firstName} (Employee)`,
         senderPhone: from,
@@ -644,17 +578,13 @@ export class BotService {
         subject: `⚠️ Job ${ref} declined by ${employee.firstName}`,
         body: `Employee ${employee.firstName} has declined job ${ref}. The booking needs to be reassigned.`,
       });
-      await this.wa.sendText(
-        from,
-        `OK ${employee.firstName}, job *${ref}* has been declined. Our team has been notified.`,
-      );
+      await this.wa.sendText(from, `OK ${employee.firstName}, job *${ref}* has been declined. Our team has been notified.`);
       return;
     }
 
     if (doneMatch || (mediaId && msg === '')) {
       const ref = doneMatch ? doneMatch[1].toUpperCase() : null;
       const booking = ref ? await this.bookingsService.findByShortRef(ref) : null;
-
       if (booking) {
         await this.bookingsService.updateStatus(booking.id, BookingStatus.COMPLETED);
         await this.teamService.incrementJobCompleted(employee.id);
@@ -668,15 +598,11 @@ export class BotService {
           `🎉 *Great work, ${employee.firstName}!*\n\nJob *${ref}* has been marked as complete.${mediaId ? '\n📸 Photo received — thank you!' : ''}\n\nHave a great day! 💚`,
         );
       } else {
-        await this.wa.sendText(
-          from,
-          `Please reply *DONE [JOB REF]* to mark a job complete. Example: *DONE A1B2C3*`,
-        );
+        await this.wa.sendText(from, `Please reply *DONE [JOB REF]* to mark a job complete. Example: *DONE A1B2C3*`);
       }
       return;
     }
 
-    // Unknown command from employee
     await this.wa.sendText(
       from,
       `Hi ${employee.firstName}! 👋\n\nAvailable commands:\n• *ACCEPT [ref]* — confirm a job\n• *DECLINE [ref]* — decline a job\n• *DONE [ref]* — mark job complete (attach photo)\n\nFor help call: *07767 759 013*`,

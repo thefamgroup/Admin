@@ -1,7 +1,7 @@
 // leads.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { Lead, LeadStatus } from './entities/lead.entity';
 import { CreateLeadDto, UpdateLeadDto } from './dto/lead.dto';
 
@@ -17,6 +17,15 @@ export class LeadsService {
     const l = await this.repo.findOne({ where: { id } });
     if (!l) throw new NotFoundException('Lead not found');
     return l;
+  }
+
+  findByPhone(phone: string) {
+    const clean = phone.replace(/\D/g, '');
+    return this.repo.find({
+      where: { phone: Like(`%${clean}`) },
+      order: { createdAt: 'DESC' },
+      take: 10,
+    });
   }
 
   create(dto: CreateLeadDto) { return this.repo.save(this.repo.create(dto)); }

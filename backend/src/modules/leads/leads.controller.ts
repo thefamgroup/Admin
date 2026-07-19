@@ -12,6 +12,7 @@ export class LeadsController {
   @Get() findAll(@Query('status') status?: LeadStatus) { return this.svc.findAll(status); }
   @Get('kanban') getKanban() { return this.svc.getKanban(); }
   @Get('stats') getStats() { return this.svc.getStats(); }
+  @Get('by-phone/:phone') findByPhone(@Param('phone') phone: string) { return this.svc.findByPhone(phone); }
   @Get(':id') findOne(@Param('id', ParseUUIDPipe) id: string) { return this.svc.findOne(id); }
   @Post() create(@Body() dto: CreateLeadDto) { return this.svc.create(dto); }
   @Patch(':id') update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLeadDto) { return this.svc.update(id, dto); }

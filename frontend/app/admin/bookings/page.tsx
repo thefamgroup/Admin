@@ -70,6 +70,8 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -89,13 +91,14 @@ export default function BookingsPage() {
   const filtered = useMemo(
     () =>
       bookings.filter((b) => {
-        const matchesSearch = b.clientName
-          .toLowerCase()
-          .includes(search.toLowerCase())
+        const matchesSearch = b.clientName.toLowerCase().includes(search.toLowerCase())
         const matchesStatus = status === 'all' || b.status === status
-        return matchesSearch && matchesStatus
+        const bDate = new Date(b.scheduledAt)
+        const matchesFrom = !dateFrom || bDate >= new Date(dateFrom)
+        const matchesTo   = !dateTo   || bDate <= new Date(dateTo + 'T23:59:59')
+        return matchesSearch && matchesStatus && matchesFrom && matchesTo
       }),
-    [bookings, search, status]
+    [bookings, search, status, dateFrom, dateTo]
   )
 
   const submit = async (e: React.FormEvent) => {
@@ -240,15 +243,15 @@ export default function BookingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>All Bookings</CardTitle>
-          <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+          <div className="flex flex-wrap gap-2 pt-2">
             <Input
               placeholder="Search client name…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="sm:max-w-xs"
+              className="w-48"
             />
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="sm:w-[180px]">
+              <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -260,6 +263,19 @@ export default function BookingsPage() {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-1">
+              <Label className="text-xs text-muted-foreground">From</Label>
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36 text-xs" />
+            </div>
+            <div className="flex items-center gap-1">
+              <Label className="text-xs text-muted-foreground">To</Label>
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36 text-xs" />
+            </div>
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(''); setDateTo('') }}>
+                Clear dates
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>

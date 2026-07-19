@@ -14,4 +14,5 @@ export class QuotesController {
   @Post() create(@Body() dto: CreateQuoteDto) { return this.svc.create(dto); }
   @Patch(':id') update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateQuoteDto) { return this.svc.update(id, dto); }
   @Delete(':id') remove(@Param('id', ParseUUIDPipe) id: string) { return this.svc.remove(id); }
+  @Post(':id/send-whatsapp') sendWhatsApp(@Param('id', ParseUUIDPipe) id: string) { return this.svc.sendViaWhatsApp(id); }
 }
