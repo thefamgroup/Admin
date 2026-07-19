@@ -7,6 +7,8 @@ import { InboxService } from '../inbox/inbox.service';
 import { TeamService } from '../team/team.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { SettingsService } from '../settings/settings.service';
+import { LeadsService } from '../leads/leads.service';
+import { LeadSource } from '../leads/entities/lead.entity';
 import { MessageSource } from '../inbox/entities/message.entity';
 import { BookingStatus } from '../bookings/entities/booking.entity';
 
@@ -65,7 +67,7 @@ const FAQ: Array<[string[], string]> = [
   ],
   [
     ['book', 'booking', 'schedule', 'appoint'],
-    `📅 To book, reply *3* and we'll collect your details.\n\nOr call us on *07769 240 184*.`,
+    `📅 To book, reply *3* and we'll collect your details.\n\nOr call us on *07767 759 013*.`,
   ],
   [
     ['dbs', 'check', 'safe', 'trust', 'insur'],
@@ -73,7 +75,7 @@ const FAQ: Array<[string[], string]> = [
   ],
   [
     ['cancel', 'reschedule', 'change'],
-    `📋 To cancel or reschedule, please call us on *07769 240 184* or email *thefamgrouphq@gmail.com* at least 24 hours in advance.`,
+    `📋 To cancel or reschedule, please call us on *07767 759 013* or email *info@thefamgroup.uk* at least 24 hours in advance.`,
   ],
   [
     ['oven', 'fridge', 'window', 'carpet', 'upholster', 'addon', 'extra'],
@@ -98,6 +100,7 @@ export class BotService {
     private teamService: TeamService,
     private bookingsService: BookingsService,
     private settingsService: SettingsService,
+    private leadsService: LeadsService,
   ) {}
 
   private async getSession(phone: string): Promise<WaSession> {
@@ -266,7 +269,7 @@ export class BotService {
         // Direct to contact for booking
         await this.wa.sendText(
           from,
-          `📅 *Make a Booking*\n\nTo complete your booking, please:\n\n📞 Call us: *07769 240 184*\n📧 Email: *thefamgrouphq@gmail.com*\n🌐 Website: *www.thefamgroup.uk/quote*\n\nOur team will confirm your booking and send you a receipt.\n\nReply *menu* to go back.`,
+          `📅 *Make a Booking*\n\nTo complete your booking, please:\n\n📞 Call us: *07767 759 013*\n📧 Email: *info@thefamgroup.uk*\n🌐 Website: *www.thefamgroup.uk/quote*\n\nOur team will confirm your booking and send you a receipt.\n\nReply *menu* to go back.`,
         );
         break;
 
@@ -497,6 +500,21 @@ export class BotService {
     const freqM = fm2[freq] ?? 1;
     const total = Math.round(base * sizeM * freqM);
 
+    // Create lead
+    try {
+      await this.leadsService.create({
+        name: name || senderName,
+        email,
+        phone,
+        source: LeadSource.WHATSAPP,
+        serviceInterest: service,
+        estimatedValue: total,
+        notes: `WhatsApp bot quote request\nSize: ${size} · Frequency: ${freq} · Estimate: £${total}`,
+      });
+    } catch (err) {
+      this.logger.error(`[Bot] Failed to create lead: ${err}`);
+    }
+
     // Create inbox message
     try {
       const inboxMsg = await this.inboxService.create({
@@ -515,7 +533,7 @@ export class BotService {
 
     await this.wa.sendText(
       from,
-      `✅ *Quote Request Received!*\n\nThank you, ${name}!\n\nWe'll review your request and get back to you within *2 hours* with a confirmed quote.\n\n📋 *Summary:*\nService: ${service}\nSize: ${size}\nFrequency: ${freq}\nEstimate: £${total}\n\n📞 For urgent enquiries: *07769 240 184*\n\nReply *menu* at any time to start over.`,
+      `✅ *Quote Request Received!*\n\nThank you, ${name}!\n\nWe'll review your request and get back to you within *2 hours* with a confirmed quote.\n\n📋 *Summary:*\nService: ${service}\nSize: ${size}\nFrequency: ${freq}\nEstimate: £${total}\n\n📞 For urgent enquiries: *07767 759 013*\n\nReply *menu* at any time to start over.`,
     );
 
     await this.resetSession(session);
@@ -576,7 +594,7 @@ export class BotService {
 
     await this.wa.sendText(
       from,
-      `🙋 *You're now connected with our team!*\n\nA member of staff will respond shortly. During business hours, we aim to reply within 15 minutes.\n\n⏰ Business hours: Mon–Sat 8am–6pm\n\nIn the meantime, you can also:\n📞 Call: *07769 240 184*\n📧 Email: *thefamgrouphq@gmail.com*`,
+      `🙋 *You're now connected with our team!*\n\nA member of staff will respond shortly. During business hours, we aim to reply within 15 minutes.\n\n⏰ Business hours: Mon–Sat 8am–6pm\n\nIn the meantime, you can also:\n📞 Call: *07767 759 013*\n📧 Email: *info@thefamgroup.uk*`,
     );
   }
 
@@ -661,7 +679,7 @@ export class BotService {
     // Unknown command from employee
     await this.wa.sendText(
       from,
-      `Hi ${employee.firstName}! 👋\n\nAvailable commands:\n• *ACCEPT [ref]* — confirm a job\n• *DECLINE [ref]* — decline a job\n• *DONE [ref]* — mark job complete (attach photo)\n\nFor help call: *07769 240 184*`,
+      `Hi ${employee.firstName}! 👋\n\nAvailable commands:\n• *ACCEPT [ref]* — confirm a job\n• *DECLINE [ref]* — decline a job\n• *DONE [ref]* — mark job complete (attach photo)\n\nFor help call: *07767 759 013*`,
     );
   }
 }

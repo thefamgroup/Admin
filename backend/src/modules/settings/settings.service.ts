@@ -7,8 +7,8 @@ import { UpsertSettingDto, BulkUpsertDto } from './dto/setting.dto';
 const DEFAULTS: Omit<Setting, 'id' | 'updatedAt'>[] = [
   // Business
   { key: 'business.name',       value: 'thefamgroup',              label: 'Business Name',     group: 'business' },
-  { key: 'business.email',      value: 'thefamgrouphq@gmail.com',  label: 'Business Email',    group: 'business' },
-  { key: 'business.phone',      value: '07769240184',              label: 'WhatsApp / Phone',  group: 'business' },
+  { key: 'business.email',      value: 'info@thefamgroup.uk',  label: 'Business Email',    group: 'business' },
+  { key: 'business.phone',      value: '07767759013',              label: 'WhatsApp / Phone',  group: 'business' },
   { key: 'business.website',    value: 'www.thefamgroup.co.uk',    label: 'Website',           group: 'business' },
   { key: 'business.address',    value: 'Manchester & Crewe, UK',   label: 'Service Areas',     group: 'business' },
   // Notifications

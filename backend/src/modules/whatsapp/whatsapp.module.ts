@@ -8,6 +8,7 @@ import { InboxModule } from '../inbox/inbox.module';
 import { TeamModule } from '../team/team.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { SettingsModule } from '../settings/settings.module';
+import { LeadsModule } from '../leads/leads.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { SettingsModule } from '../settings/settings.module';
     TeamModule,
     BookingsModule,
     SettingsModule,
+    LeadsModule,
   ],
   providers: [WhatsAppService, BotService],
   exports: [WhatsAppService],
