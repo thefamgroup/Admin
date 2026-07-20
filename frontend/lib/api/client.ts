@@ -60,6 +60,7 @@ export const quotesApi = {
   update:        (id: string, data: Partial<Quote>) => patch<Quote>(`/quotes/${id}`, data),
   remove:        (id: string) => del<void>(`/quotes/${id}`),
   sendWhatsApp:  (id: string) => post<{ sent: boolean }>(`/quotes/${id}/send-whatsapp`, {}),
+  downloadPdf:   (id: string) => `${BASE}/quotes/${id}/pdf`,
 }
 
 // ── Leads ─────────────────────────────────────────────────────────

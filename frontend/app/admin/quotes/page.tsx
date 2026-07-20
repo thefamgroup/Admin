@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Send, Check, BadgePoundSterling, MessageCircle, Loader2 } from 'lucide-react'
+import { Plus, Send, Check, BadgePoundSterling, MessageCircle, Loader2, Download } from 'lucide-react'
 
 import { quotesApi } from '@/lib/api/client'
 import { formatCurrency } from '@/lib/utils'
@@ -71,6 +71,27 @@ export default function QuotesPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [sending, setSending] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState<string | null>(null)
+
+  const downloadPdf = async (id: string, clientName: string) => {
+    setDownloading(id)
+    try {
+      const url = quotesApi.downloadPdf(id)
+      const token = document.cookie.match(/tfg_token=([^;]+)/)?.[1] ?? ''
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error('Failed')
+      const blob = await res.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `TFG-Quote-${clientName.replace(/\s+/g, '-')}.pdf`
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } catch {
+      alert('Failed to download PDF')
+    } finally {
+      setDownloading(null)
+    }
+  }
 
   const load = (status: string) => {
     setLoading(true)
@@ -286,6 +307,18 @@ export default function QuotesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => downloadPdf(q.id, q.clientName)}
+                          disabled={downloading === q.id}
+                          title="Download PDF"
+                        >
+                          {downloading === q.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <Download className="h-3.5 w-3.5" />}
+                          PDF
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"

@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, ParseUUIDPipe, Res } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { Response } from 'express';
 import { QuotesService } from './quotes.service';
 import { CreateQuoteDto, UpdateQuoteDto } from './dto/quote.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -15,4 +16,17 @@ export class QuotesController {
   @Patch(':id') update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateQuoteDto) { return this.svc.update(id, dto); }
   @Delete(':id') remove(@Param('id', ParseUUIDPipe) id: string) { return this.svc.remove(id); }
   @Post(':id/send-whatsapp') sendWhatsApp(@Param('id', ParseUUIDPipe) id: string) { return this.svc.sendViaWhatsApp(id); }
+
+  @Get(':id/pdf')
+  async downloadPdf(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
+    const q = await this.svc.findOne(id);
+    const buffer = await this.svc.generatePdfBuffer(q);
+    const shortId = q.id.split('-')[0].toUpperCase();
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="TFG-Quote-${shortId}.pdf"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
+  }
 }

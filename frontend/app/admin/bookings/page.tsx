@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Users } from 'lucide-react'
+import { Plus, Users, CalendarDays, List, ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { bookingsApi, teamApi } from '@/lib/api/client'
 import { formatCurrency } from '@/lib/utils'
@@ -79,6 +79,25 @@ export default function BookingsPage() {
   const [team, setTeam] = useState<TeamMember[]>([])
   const [assignOpen, setAssignOpen] = useState<string | null>(null)
   const [assigning, setAssigning] = useState(false)
+  const [view, setView] = useState<'list' | 'calendar'>('list')
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear())
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth() + 1)
+  const [calBookings, setCalBookings] = useState<Booking[]>([])
+
+  const loadCalendar = (y: number, m: number) => {
+    bookingsApi.calendar(y, m).then(setCalBookings).catch(() => setCalBookings([]))
+  }
+
+  const prevMonth = () => {
+    const m = calMonth === 1 ? 12 : calMonth - 1
+    const y = calMonth === 1 ? calYear - 1 : calYear
+    setCalMonth(m); setCalYear(y); loadCalendar(y, m)
+  }
+  const nextMonth = () => {
+    const m = calMonth === 12 ? 1 : calMonth + 1
+    const y = calMonth === 12 ? calYear + 1 : calYear
+    setCalMonth(m); setCalYear(y); loadCalendar(y, m)
+  }
 
   const load = () => {
     setLoading(true)
@@ -155,12 +174,28 @@ export default function BookingsPage() {
           <h1 className="text-2xl font-bold">Bookings</h1>
           <p className="text-muted-foreground">{bookings.length} total bookings</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4" /> New Booking
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex rounded-md border overflow-hidden">
+            <button
+              onClick={() => setView('list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${view === 'list' ? 'bg-foreground text-background' : 'hover:bg-accent'}`}
+            >
+              <List className="h-3.5 w-3.5" /> List
+            </button>
+            <button
+              onClick={() => { setView('calendar'); loadCalendar(calYear, calMonth) }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border-l ${view === 'calendar' ? 'bg-foreground text-background' : 'hover:bg-accent'}`}
+            >
+              <CalendarDays className="h-3.5 w-3.5" /> Calendar
+            </button>
+          </div>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4" /> New Booking
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>New Booking</DialogTitle>
@@ -265,10 +300,61 @@ export default function BookingsPage() {
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
-      <Card>
+      {/* ── Calendar view ─────────────────────────────────────────────── */}
+      {view === 'calendar' && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>
+                {new Date(calYear, calMonth - 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+              </CardTitle>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" onClick={prevMonth}><ChevronLeft className="h-4 w-4" /></Button>
+                <Button variant="outline" size="sm" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const daysInMonth = new Date(calYear, calMonth, 0).getDate()
+              const firstDay = (new Date(calYear, calMonth - 1, 1).getDay() + 6) % 7 // Mon=0
+              const cells: React.ReactNode[] = []
+              for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} />)
+              for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+                const dayBookings = calBookings.filter(b => b.scheduledAt?.startsWith(dateStr))
+                const isToday = dateStr === new Date().toISOString().slice(0,10)
+                cells.push(
+                  <div key={d} className={`min-h-[80px] rounded-lg border p-1.5 ${isToday ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-border'}`}>
+                    <p className={`text-xs font-semibold mb-1 ${isToday ? 'text-green-600' : 'text-muted-foreground'}`}>{d}</p>
+                    {dayBookings.map(b => (
+                      <div key={b.id} className="mb-0.5 truncate rounded bg-green-100 dark:bg-green-900/40 px-1 py-0.5 text-[10px] font-medium text-green-800 dark:text-green-200">
+                        {b.clientName}
+                      </div>
+                    ))}
+                  </div>
+                )
+              }
+              return (
+                <div>
+                  <div className="mb-1 grid grid-cols-7 gap-1 text-center">
+                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+                      <p key={d} className="text-xs font-medium text-muted-foreground py-1">{d}</p>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">{cells}</div>
+                </div>
+              )
+            })()}
+          </CardContent>
+        </Card>
+      )}
+
+      {view === 'list' && <Card>
         <CardHeader>
           <CardTitle>All Bookings</CardTitle>
           <div className="flex flex-wrap gap-2 pt-2">
@@ -402,7 +488,7 @@ export default function BookingsPage() {
             </TableBody>
           </Table>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   )
 }
