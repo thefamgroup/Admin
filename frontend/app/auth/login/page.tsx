@@ -103,6 +103,14 @@ export default function LoginPage() {
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                 {loading ? 'Signing in…' : 'Sign in'}
               </Button>
+              <div className="text-center">
+                <a
+                  href="/auth/forgot-password"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Forgot password?
+                </a>
+              </div>
             </form>
           </CardContent>
         </Card>

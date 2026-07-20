@@ -1,26 +1,30 @@
 import {
   Injectable, UnauthorizedException, ConflictException,
-  OnModuleInit, Logger,
+  BadRequestException, OnModuleInit, Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
+import { Resend } from 'resend';
 import { User, UserRole } from './entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService implements OnModuleInit {
   private readonly logger = new Logger(AuthService.name);
+  private readonly resend: Resend;
 
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
-  ) {}
+  ) {
+    this.resend = new Resend(config.get<string>('RESEND_API_KEY'));
+  }
 
-  // Seed first admin on startup
   async onModuleInit() {
     const email = this.config.get<string>('ADMIN_EMAIL', 'admin@thefamgroup.co.uk');
     const exists = await this.userRepo.findOne({ where: { email } });
@@ -55,6 +59,54 @@ export class AuthService implements OnModuleInit {
         role: user.role,
       },
     };
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { email: email.toLowerCase() } });
+    if (!user) return; // silent — don't reveal whether email exists
+
+    const token = crypto.randomUUID();
+    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await this.userRepo.update(user.id, { resetToken: token, resetTokenExpiry: expiry });
+
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3001');
+    const resetLink = `${frontendUrl}/auth/reset-password?token=${token}`;
+
+    await this.resend.emails.send({
+      from: 'thefamgroup Admin <noreply@thefamgroup.uk>',
+      to: user.email,
+      subject: 'Reset your password — thefamgroup Admin',
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+          <h2 style="color:#3a7d44">thefamgroup Admin</h2>
+          <p>Hi ${user.firstName},</p>
+          <p>We received a request to reset your admin password.</p>
+          <p style="margin:24px 0">
+            <a href="${resetLink}" style="background:#3a7d44;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">
+              Reset Password
+            </a>
+          </p>
+          <p style="color:#666;font-size:14px">This link expires in 1 hour. If you didn't request a reset, ignore this email.</p>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0"/>
+          <p style="color:#999;font-size:12px">thefamgroup Admin · Family. Community. Care.</p>
+        </div>
+      `,
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { resetToken: token } });
+    if (!user || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+      throw new BadRequestException('Invalid or expired reset link. Please request a new one.');
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await this.userRepo.update(user.id, {
+      password: hashed,
+      resetToken: null,
+      resetTokenExpiry: null,
+    });
   }
 
   async createUser(data: {
