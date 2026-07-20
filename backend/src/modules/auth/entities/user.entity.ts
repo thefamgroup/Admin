@@ -32,10 +32,10 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   resetToken: string | null;
 
-  @Column({ nullable: true, type: 'timestamptz' })
+  @Column({ type: 'timestamptz', nullable: true })
   resetTokenExpiry: Date | null;
 
   @CreateDateColumn()
