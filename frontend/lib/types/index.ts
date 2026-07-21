@@ -1,8 +1,18 @@
 // ── Auth ──────────────────────────────────────────────────────────
 export interface AuthUser {
   id: string; email: string; firstName: string; lastName: string; role: string;
+  permissions: string[];
 }
 export interface LoginResponse { accessToken: string; user: AuthUser }
+
+export const ALL_PERMISSIONS = ['dashboard', 'inbox', 'bookings', 'quotes', 'leads', 'team', 'settings', 'users'] as const
+export type Permission = typeof ALL_PERMISSIONS[number]
+
+export const ROLE_PRESETS: Record<string, string[]> = {
+  admin:   ['dashboard', 'inbox', 'bookings', 'quotes', 'leads', 'team', 'settings', 'users'],
+  manager: ['dashboard', 'inbox', 'bookings', 'quotes', 'leads', 'team'],
+  staff:   ['dashboard', 'inbox', 'bookings'],
+}
 
 // ── Bookings ──────────────────────────────────────────────────────
 export type BookingStatus = 'pending'|'confirmed'|'in_progress'|'completed'|'cancelled'

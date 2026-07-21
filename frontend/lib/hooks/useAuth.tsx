@@ -5,8 +5,14 @@ import Cookies from 'js-cookie'
 import { authApi } from '../api/client'
 import type { AuthUser } from '../types'
 
-interface AuthCtx { user: AuthUser | null; login: (e: string, p: string) => Promise<void>; logout: () => void; loading: boolean }
-const Ctx = createContext<AuthCtx>({ user: null, login: async () => {}, logout: () => {}, loading: true })
+interface AuthCtx {
+  user: AuthUser | null
+  login: (e: string, p: string) => Promise<void>
+  logout: () => void
+  loading: boolean
+  can: (permission: string) => boolean
+}
+const Ctx = createContext<AuthCtx>({ user: null, login: async () => {}, logout: () => {}, loading: true, can: () => false })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -33,7 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/auth/login')
   }
 
-  return <Ctx.Provider value={{ user, login, logout, loading }}>{children}</Ctx.Provider>
+  const can = (permission: string) => user?.permissions?.includes(permission) ?? false
+
+  return <Ctx.Provider value={{ user, login, logout, loading, can }}>{children}</Ctx.Provider>
 }
 
 export const useAuth = () => useContext(Ctx)

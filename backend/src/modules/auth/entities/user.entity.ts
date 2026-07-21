@@ -29,6 +29,9 @@ export class User {
   @Column({ type: 'enum', enum: UserRole, default: UserRole.STAFF })
   role: UserRole;
 
+  @Column('text', { array: true, default: [] })
+  permissions: string[];
+
   @Column({ default: true })
   isActive: boolean;
 

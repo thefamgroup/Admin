@@ -29,18 +29,19 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 const NAV = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/bookings', label: 'Bookings', icon: CalendarCheck },
-  { href: '/admin/quotes', label: 'Quotes & Invoices', icon: FileText },
-  { href: '/admin/leads', label: 'Leads', icon: Users2 },
-  { href: '/admin/inbox', label: 'Inbox', icon: MessageSquare },
-  { href: '/admin/team', label: 'Team', icon: UserCog },
-  { href: '/admin/settings', label: 'Settings', icon: Settings2 },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard' },
+  { href: '/admin/bookings', label: 'Bookings',   icon: CalendarCheck,   permission: 'bookings' },
+  { href: '/admin/quotes',   label: 'Quotes & Invoices', icon: FileText, permission: 'quotes' },
+  { href: '/admin/leads',    label: 'Leads',      icon: Users2,          permission: 'leads' },
+  { href: '/admin/inbox',    label: 'Inbox',      icon: MessageSquare,   permission: 'inbox' },
+  { href: '/admin/team',     label: 'Team',       icon: UserCog,         permission: 'team' },
+  { href: '/admin/settings', label: 'Settings',   icon: Settings2,       permission: 'settings' },
+  { href: '/admin/users',    label: 'Users',      icon: Users2,          permission: 'users' },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, can } = useAuth()
 
   return (
     <Sidebar>
@@ -62,7 +63,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV.map((item) => {
+              {NAV.filter(item => can(item.permission)).map((item) => {
                 const active = pathname.startsWith(item.href)
                 return (
                   <SidebarMenuItem key={item.href}>

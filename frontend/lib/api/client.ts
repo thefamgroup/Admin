@@ -29,9 +29,19 @@ const del  = <T>(path: string) => request<T>(path, { method: 'DELETE' })
 export const authApi = {
   login: (email: string, password: string) =>
     post<LoginResponse>('/auth/login', { email, password }),
-  me: () => get<{ id: string; email: string; firstName: string; lastName: string; role: string }>('/auth/me'),
+  me: () => get<{ id: string; email: string; firstName: string; lastName: string; role: string; permissions: string[] }>('/auth/me'),
   forgotPassword: (email: string) => post('/auth/forgot-password', { email }),
-  resetPassword: (token: string, password: string) => post('/auth/reset-password', { token, password }),
+  resetPassword: (token: string, password: string, invite?: boolean) =>
+    post('/auth/reset-password', { token, password, ...(invite ? { invite: true } : {}) }),
+  // User management
+  listUsers: () => get<any[]>('/auth/users'),
+  invite: (data: { email: string; firstName: string; lastName: string; role: string; permissions: string[] }) =>
+    post<any>('/auth/invite', data),
+  updatePermissions: (id: string, permissions: string[], role?: string) =>
+    patch<any>(`/auth/users/${id}/permissions`, { permissions, ...(role ? { role } : {}) }),
+  toggleActive: (id: string, isActive: boolean) =>
+    patch<any>(`/auth/users/${id}/active`, { isActive }),
+  deleteUser: (id: string) => del<void>(`/auth/users/${id}`),
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────

@@ -12,7 +12,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams()
-  const token = searchParams.get('token') ?? ''
+  const token  = searchParams.get('token') ?? ''
+  const invite = searchParams.get('invite') === '1'
 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -34,7 +35,7 @@ function ResetPasswordForm() {
     setError('')
     setLoading(true)
     try {
-      await authApi.resetPassword(token, password)
+      await authApi.resetPassword(token, password, invite)
       setDone(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid or expired reset link.')
@@ -58,7 +59,7 @@ function ResetPasswordForm() {
     <div className="space-y-4">
       <Alert className="border-green-200 bg-green-50 text-green-800">
         <CheckCircle2 className="h-4 w-4 text-green-600" />
-        <AlertDescription>Password updated. You can now sign in.</AlertDescription>
+        <AlertDescription>{invite ? 'Account activated! You can now sign in.' : 'Password updated. You can now sign in.'}</AlertDescription>
       </Alert>
       <a href="/auth/login" className="block text-center text-sm text-muted-foreground hover:text-foreground transition-colors">
         Go to sign in
