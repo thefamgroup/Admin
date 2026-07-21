@@ -49,7 +49,8 @@ export class WhatsAppController {
       const message = changes.messages[0];
       const contact = changes.contacts?.[0];
       const from: string = message.from;
-      const senderName: string = contact?.profile?.name || from;
+      const profileName = contact?.profile?.name;
+      const senderName: string = (profileName && profileName.trim().length > 1) ? profileName : from;
       const msgType: string = message.type;
 
       let text = '';

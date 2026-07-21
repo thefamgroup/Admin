@@ -11,6 +11,7 @@ export class InboxService {
   private readonly logger = new Logger(InboxService.name);
   private readonly adminEmail: string;
   private readonly resendKey: string;
+  private readonly frontendUrl: string;
 
   constructor(
     @InjectRepository(Message) private repo: Repository<Message>,
@@ -18,8 +19,9 @@ export class InboxService {
     private wa: WhatsAppService,
     config: ConfigService,
   ) {
-    this.adminEmail = config.get('ADMIN_EMAIL', 'info@thefamgroup.uk');
-    this.resendKey  = config.get('RESEND_API_KEY', '');
+    this.adminEmail  = config.get('ADMIN_EMAIL', 'info@thefamgroup.uk');
+    this.resendKey   = config.get('RESEND_API_KEY', '');
+    this.frontendUrl = config.get('FRONTEND_URL', 'http://localhost:3001');
   }
 
   findAll(status?: MessageStatus) {
@@ -111,7 +113,7 @@ export class InboxService {
             <blockquote style="border-left:4px solid #3a7d44;padding-left:12px;color:#444">
               ${msg.body.replace(/\n/g, '<br>')}
             </blockquote>
-            <p><a href="https://admin-x4wx.onrender.com/admin/inbox" style="background:#3a7d44;color:white;padding:10px 20px;border-radius:6px;text-decoration:none">Open Inbox</a></p>
+            <p><a href="${this.frontendUrl}/inbox" style="background:#3a7d44;color:white;padding:10px 20px;border-radius:6px;text-decoration:none">Open Inbox</a></p>
           </div>`,
         }),
       });
