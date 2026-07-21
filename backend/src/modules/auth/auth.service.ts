@@ -83,6 +83,20 @@ export class AuthService implements OnModuleInit {
     };
   }
 
+  async listUsersDebug() {
+    const users = await this.userRepo.find();
+    return users.map(u => ({ id: u.id, email: u.email, isActive: u.isActive, role: u.role }));
+  }
+
+  async fixAdminEmail() {
+    const users = await this.userRepo.find();
+    const target = users.find(u => u.email.includes('thefamgroup'));
+    if (!target) return { ok: false, message: 'No thefamgroup user found', users: users.map(u => u.email) };
+    if (target.email === 'admin@thefamgroup.uk') return { ok: true, message: 'Email already correct', email: target.email };
+    await this.userRepo.update(target.id, { email: 'admin@thefamgroup.uk' });
+    return { ok: true, message: `Updated ${target.email} → admin@thefamgroup.uk` };
+  }
+
   async forgotPasswordDebug(email: string): Promise<{ step: string; found: boolean; emailSent?: boolean; error?: string }> {
     try {
       const user = await this.userRepo.findOne({ where: { email: email.toLowerCase() } });

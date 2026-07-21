@@ -59,6 +59,18 @@ export class AuthController {
     return this.authService.forgotPasswordDebug('admin@thefamgroup.uk');
   }
 
+  @Public()
+  @Get('debug-users')
+  debugUsers() {
+    return this.authService.listUsersDebug();
+  }
+
+  @Public()
+  @Get('debug-fix-email')
+  debugFixEmail() {
+    return this.authService.fixAdminEmail();
+  }
+
   // ── User management ──────────────────────────────────────────────
 
   @Get('users')
