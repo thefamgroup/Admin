@@ -22,16 +22,18 @@ export class AuthController {
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send password reset email' })
-  forgotPassword(@Body() dto: { email: string }) {
-    return this.authService.forgotPassword(dto.email);
+  async forgotPassword(@Body() dto: { email: string }) {
+    await this.authService.forgotPassword(dto.email);
+    return { ok: true };
   }
 
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset password using token from email' })
-  resetPassword(@Body() dto: { token: string; password: string }) {
-    return this.authService.resetPassword(dto.token, dto.password);
+  async resetPassword(@Body() dto: { token: string; password: string }) {
+    await this.authService.resetPassword(dto.token, dto.password);
+    return { ok: true };
   }
 
   @Get('me')

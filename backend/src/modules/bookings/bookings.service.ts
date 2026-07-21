@@ -89,7 +89,7 @@ export class BookingsService {
   }
 
   async clearAssignment(id: string) {
-    await this.repo.update(id, { assignedEmployeeId: undefined, assignedTo: undefined });
+    await this.repo.update(id, { assignedEmployeeId: null as any, assignedTo: null as any, assignedEmployeeIds: [] });
   }
 
   async dispatchToEmployee(bookingId: string, employeeId: string): Promise<{ sent: boolean }> {
