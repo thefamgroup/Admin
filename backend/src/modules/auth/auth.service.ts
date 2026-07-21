@@ -227,6 +227,25 @@ export class AuthService implements OnModuleInit {
     return user;
   }
 
+  async debugSendEmail(to: string): Promise<{ ok: boolean; status?: number; body?: any; error?: string; keyLength: number }> {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.resendKey}` },
+        body: JSON.stringify({
+          from: 'thefamgroup Admin <noreply@thefamgroup.uk>',
+          to: [to],
+          subject: 'Debug test',
+          html: '<p>Debug test</p>',
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, body, keyLength: this.resendKey?.length ?? 0 };
+    } catch (err: any) {
+      return { ok: false, error: err?.message ?? String(err), keyLength: this.resendKey?.length ?? 0 };
+    }
+  }
+
   private async sendEmail(to: string, subject: string, html: string): Promise<void> {
     try {
       const res = await fetch('https://api.resend.com/emails', {
