@@ -46,31 +46,6 @@ export class AuthController {
     return this.authService.getProfile(user.sub);
   }
 
-  // TEMPORARY debug endpoints — remove after email is confirmed working
-  @Public()
-  @Get('debug-email')
-  debugEmail() {
-    return this.authService.debugSendEmail('admin@thefamgroup.uk');
-  }
-
-  @Public()
-  @Get('debug-reset')
-  debugReset() {
-    return this.authService.forgotPasswordDebug('admin@thefamgroup.uk');
-  }
-
-  @Public()
-  @Get('debug-users')
-  debugUsers() {
-    return this.authService.listUsersDebug();
-  }
-
-  @Public()
-  @Get('debug-fix-email')
-  debugFixEmail() {
-    return this.authService.fixAdminEmail();
-  }
-
   // ── User management ──────────────────────────────────────────────
 
   @Get('users')

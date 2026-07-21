@@ -83,41 +83,6 @@ export class AuthService implements OnModuleInit {
     };
   }
 
-  async listUsersDebug() {
-    const users = await this.userRepo.find();
-    return users.map(u => ({ id: u.id, email: u.email, isActive: u.isActive, role: u.role }));
-  }
-
-  async fixAdminEmail() {
-    const users = await this.userRepo.find();
-    const target = users.find(u => u.email.includes('thefamgroup'));
-    if (!target) return { ok: false, message: 'No thefamgroup user found', users: users.map(u => u.email) };
-    if (target.email === 'admin@thefamgroup.uk') return { ok: true, message: 'Email already correct', email: target.email };
-    await this.userRepo.update(target.id, { email: 'admin@thefamgroup.uk' });
-    return { ok: true, message: `Updated ${target.email} → admin@thefamgroup.uk` };
-  }
-
-  async forgotPasswordDebug(email: string): Promise<{ step: string; found: boolean; emailSent?: boolean; error?: string }> {
-    try {
-      const user = await this.userRepo.findOne({ where: { email: email.toLowerCase() } });
-      if (!user) return { step: 'user-lookup', found: false };
-
-      const token = crypto.randomUUID();
-      await this.userRepo.update(user.id, { resetToken: token, resetTokenExpiry: new Date(Date.now() + 3600000) });
-
-      const resetLink = `${this.frontendUrl}/auth/reset-password?token=${token}`;
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.resendKey}` },
-        body: JSON.stringify({ from: 'thefamgroup Admin <noreply@thefamgroup.uk>', to: [user.email], subject: 'Reset your password — thefamgroup Admin', html: `<a href="${resetLink}">Reset Password</a>` }),
-      });
-      const body = await res.json().catch(() => ({}));
-      return { step: 'email-sent', found: true, emailSent: res.ok, error: res.ok ? undefined : JSON.stringify(body) };
-    } catch (err: any) {
-      return { step: 'exception', found: false, error: err?.message ?? String(err) };
-    }
-  }
-
   async forgotPassword(email: string): Promise<void> {
     const user = await this.userRepo.findOne({ where: { email: email.toLowerCase() } });
     if (!user) return;
@@ -260,25 +225,6 @@ export class AuthService implements OnModuleInit {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
     return user;
-  }
-
-  async debugSendEmail(to: string): Promise<{ ok: boolean; status?: number; body?: any; error?: string; keyLength: number }> {
-    try {
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.resendKey}` },
-        body: JSON.stringify({
-          from: 'thefamgroup Admin <noreply@thefamgroup.uk>',
-          to: [to],
-          subject: 'Debug test',
-          html: '<p>Debug test</p>',
-        }),
-      });
-      const body = await res.json().catch(() => ({}));
-      return { ok: res.ok, status: res.status, body, keyLength: this.resendKey?.length ?? 0 };
-    } catch (err: any) {
-      return { ok: false, error: err?.message ?? String(err), keyLength: this.resendKey?.length ?? 0 };
-    }
   }
 
   private async sendEmail(to: string, subject: string, html: string): Promise<void> {
