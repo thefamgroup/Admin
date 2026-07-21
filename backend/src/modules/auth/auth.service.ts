@@ -8,21 +8,20 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
-import { Resend } from 'resend';
 import { User, UserRole } from './entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService implements OnModuleInit {
   private readonly logger = new Logger(AuthService.name);
-  private readonly resend: Resend;
+  private readonly resendKey: string;
 
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
   ) {
-    this.resend = new Resend(config.get<string>('RESEND_API_KEY'));
+    this.resendKey = config.get<string>('RESEND_API_KEY', '');
   }
 
   async onModuleInit() {
@@ -82,30 +81,41 @@ export class AuthService implements OnModuleInit {
     const resetLink = `${frontendUrl}/auth/reset-password?token=${token}`;
 
     try {
-      await this.resend.emails.send({
-        from: 'thefamgroup Admin <noreply@thefamgroup.uk>',
-        to: user.email,
-        subject: 'Reset your password — thefamgroup Admin',
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
-            <h2 style="color:#3a7d44">thefamgroup Admin</h2>
-            <p>Hi ${user.firstName},</p>
-            <p>We received a request to reset your admin password.</p>
-            <p style="margin:24px 0">
-              <a href="${resetLink}" style="background:#3a7d44;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">
-                Reset Password
-              </a>
-            </p>
-            <p style="color:#666;font-size:14px">This link expires in 1 hour. If you didn't request a reset, ignore this email.</p>
-            <hr style="border:none;border-top:1px solid #eee;margin:24px 0"/>
-            <p style="color:#999;font-size:12px">thefamgroup Admin · Family. Community. Care.</p>
-          </div>
-        `,
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.resendKey}`,
+        },
+        body: JSON.stringify({
+          from: 'thefamgroup Admin <noreply@thefamgroup.uk>',
+          to: [user.email],
+          subject: 'Reset your password — thefamgroup Admin',
+          html: `
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+              <h2 style="color:#3a7d44">thefamgroup Admin</h2>
+              <p>Hi ${user.firstName},</p>
+              <p>We received a request to reset your admin password.</p>
+              <p style="margin:24px 0">
+                <a href="${resetLink}" style="background:#3a7d44;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">
+                  Reset Password
+                </a>
+              </p>
+              <p style="color:#666;font-size:14px">This link expires in 1 hour. If you didn't request a reset, ignore this email.</p>
+              <hr style="border:none;border-top:1px solid #eee;margin:24px 0"/>
+              <p style="color:#999;font-size:12px">thefamgroup Admin · Family. Community. Care.</p>
+            </div>
+          `,
+        }),
       });
-      this.logger.log(`Password reset email sent to ${user.email}`);
+      if (res.ok) {
+        this.logger.log(`Password reset email sent to ${user.email}`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        this.logger.error(`Failed to send reset email to ${user.email}: ${JSON.stringify(err)}`);
+      }
     } catch (err) {
       this.logger.error(`Failed to send reset email to ${user.email}: ${err}`);
-      // Don't throw — token is saved in DB so reset can still work once email is fixed
     }
   }
 
