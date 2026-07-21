@@ -26,7 +26,15 @@ export class AuthService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    const email = this.config.get<string>('ADMIN_EMAIL', 'admin@thefamgroup.co.uk');
+    const email = this.config.get<string>('ADMIN_EMAIL', 'admin@thefamgroup.uk');
+
+    // Migrate legacy seed email if it still exists
+    const legacy = await this.userRepo.findOne({ where: { email: 'admin@thefamgroup.co.uk' } });
+    if (legacy && legacy.email !== email) {
+      await this.userRepo.update(legacy.id, { email });
+      this.logger.log(`Admin email migrated: admin@thefamgroup.co.uk → ${email}`);
+    }
+
     const exists = await this.userRepo.findOne({ where: { email } });
     if (!exists) {
       const password = this.config.get<string>('ADMIN_PASSWORD', 'Admin@123!');
