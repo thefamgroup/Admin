@@ -20,7 +20,7 @@ import { LeadsModule } from '../leads/leads.module';
     LeadsModule,
   ],
   providers: [WhatsAppService, BotService],
-  exports: [WhatsAppService],
+  exports: [WhatsAppService, BotService],
   controllers: [WhatsAppController],
 })
 export class WhatsAppModule {}

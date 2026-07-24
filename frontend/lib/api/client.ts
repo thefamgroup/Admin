@@ -121,3 +121,9 @@ export const settingsApi = {
   upsert: (data: { key: string; value: string; label?: string; group?: string }) => post('/settings', data),
   bulk:   (settings: any[]) => post('/settings/bulk', { settings }),
 }
+
+// ── WhatsApp ──────────────────────────────────────────────────────────
+export const whatsappApi = {
+  endLiveChat: (phone: string) =>
+    patch<{ ok: boolean; message: string }>(`/whatsapp/session/${encodeURIComponent(phone)}/end`, {}),
+}

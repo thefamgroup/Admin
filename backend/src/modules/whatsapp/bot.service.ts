@@ -77,6 +77,7 @@ const FAQ: Array<[string[], string]> = [
   ],
 ];
 
+// Keywords that trigger a full bot reset (only honoured when NOT in AGENT mode)
 const GLOBAL_RESETS = ['menu', 'hi', 'hello', 'hey', 'start', 'help', 'reset'];
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -84,6 +85,10 @@ const GLOBAL_RESETS = ['menu', 'hi', 'hello', 'hey', 'start', 'help', 'reset'];
 @Injectable()
 export class BotService {
   private readonly logger = new Logger(BotService.name);
+
+  // In-memory guard: prevents the same customer getting 2+ menus within 12 s
+  // (handles duplicate webhook retries and rapid multi-message bursts)
+  private readonly recentMenus = new Map<string, number>();
 
   constructor(
     @InjectRepository(WaSession)
@@ -123,23 +128,51 @@ export class BotService {
     const msg = (text || '').trim().toLowerCase();
     this.logger.log(`[Bot] ← ${from} (${senderName}): "${msg}"`);
 
-    // Employee check
+    // Employee check — handled separately, never reaches bot logic
     const employee = await this.teamService.findByWhatsApp(from);
     if (employee) { await this.handleEmployeeMessage(from, employee, msg, mediaId); return; }
 
     const session = await this.getSession(from);
     this.logger.log(`[Bot] Session: ${from} → ${session.state}`);
 
-    // Global escape — always resets to menu regardless of state
-    if (GLOBAL_RESETS.includes(msg)) {
-      await this.sendMenu(session, from); return;
-    }
-
-    // AGENT state — forward customer messages to inbox thread
+    // ── AGENT state: live human handoff — takes FULL priority ─────────────
+    // This check MUST come before GLOBAL_RESETS so that a customer typing
+    // "hi" or "hello" during a live chat doesn't accidentally trigger the bot menu.
     if (session.state === 'AGENT') {
+      // Customer chose to return to bot menu after the confirmation prompt
+      if (msg === 'confirm_exit_agent') {
+        await this.reset(session);
+        await this.sendMenu(session, from);
+        return;
+      }
+      // Customer chose to stay in live chat
+      if (msg === 'stay_agent') {
+        await this.wa.sendText(from, `No problem! You're still connected with our team. They'll reply shortly 😊`);
+        return;
+      }
+      // Customer explicitly asks for the bot menu — show a confirmation
+      if (msg === 'menu' || msg === '#menu' || msg === 'bot menu' || msg === 'exit') {
+        await this.wa.sendInteractiveButtons(
+          from,
+          `💬 *You're in a live chat* with our support team.\n\nWould you like to switch back to the bot menu? Your agent won't be notified.`,
+          [
+            { id: 'confirm_exit_agent', title: '🤖 Switch to Bot Menu' },
+            { id: 'stay_agent',          title: '👤 Continue with Team' },
+          ],
+          'Live Chat Active',
+        );
+        return;
+      }
+      // Every other message (including "hi", "hello", "help") → forward to thread
       if (session.inboxMessageId) {
         await this.inboxService.appendToThread(session.inboxMessageId, `[Customer]: ${text}`);
       }
+      return;
+    }
+
+    // ── Global escape (only when NOT in AGENT state) ──────────────────────
+    if (GLOBAL_RESETS.includes(msg)) {
+      await this.sendMenu(session, from);
       return;
     }
 
@@ -152,8 +185,8 @@ export class BotService {
     s: WaSession, from: string, senderName: string, msg: string,
   ): Promise<void> {
     switch (s.state) {
-      case 'IDLE':          return this.sendMenu(s, from);
-      case 'MENU':          return this.handleMenuChoice(s, from, senderName, msg);
+      case 'IDLE':            return this.sendMenu(s, from);
+      case 'MENU':            return this.handleMenuChoice(s, from, senderName, msg);
       case 'PRICING_SERVICE': return this.handlePricingService(s, from, msg);
       case 'PRICING_SIZE':    return this.handlePricingSize(s, from, msg);
       case 'PRICING_FREQ':    return this.handlePricingFreq(s, from, msg);
@@ -173,6 +206,16 @@ export class BotService {
   // ── Menu ─────────────────────────────────────────────────────────────────
 
   private async sendMenu(s: WaSession, from: string): Promise<void> {
+    // Rate-limit: skip if a menu was already sent within 12 seconds.
+    // This prevents duplicates caused by Meta webhook retries or rapid customer messages.
+    const last = this.recentMenus.get(from);
+    const now = Date.now();
+    if (last && now - last < 12_000) {
+      this.logger.warn(`[Bot] Skipping duplicate menu for ${from} (${now - last}ms ago)`);
+      return;
+    }
+    this.recentMenus.set(from, now);
+
     s.state = 'MENU'; s.data = {};
     await this.save(s);
     await this.wa.sendInteractiveList(
@@ -231,9 +274,7 @@ export class BotService {
         await this.wa.sendInteractiveButtons(
           from,
           `🙋 *FAQ & Support*\n\nAsk me anything, or tap below:\n\n• What areas do you cover?\n• How much does a deep clean cost?\n• Are your cleaners DBS checked?\n• Can I cancel my booking?`,
-          [
-            { id: '5', title: 'Talk to Support' },
-          ],
+          [{ id: '5', title: 'Talk to Support' }],
           'FAQ & Support',
         );
         return;
@@ -241,9 +282,25 @@ export class BotService {
       case '5':
         return this.connectToAgent(s, from, senderName);
 
-      default:
-        await this.wa.sendText(from, `Please choose an option from the menu.`);
+      default: {
+        // While in MENU state, try to answer FAQ keywords inline.
+        // This prevents the bot from ignoring a genuine question typed instead of tapping an option.
+        for (const [keywords, answer] of FAQ) {
+          if (keywords.some((kw) => msg.includes(kw))) {
+            await this.wa.sendInteractiveButtons(
+              from,
+              answer,
+              [
+                { id: '5', title: 'Talk to Support' },
+                { id: 'menu', title: 'Main Menu' },
+              ],
+            );
+            return;
+          }
+        }
+        // Unrecognised input — resend the menu once (no extra "please choose" text to avoid doubling)
         return this.sendMenu(s, from);
+      }
     }
   }
 
@@ -332,7 +389,6 @@ export class BotService {
     s: WaSession, from: string, senderName: string, msg: string,
   ): Promise<void> {
     if (msg === '1') {
-      // Pre-fill quote data from pricing flow, skip service/size/freq questions
       s.state = 'QUOTE_NAME'; await this.save(s);
       await this.wa.sendText(from, `📋 *Great! Let's get your formal quote.*\n\n👤 What is your *full name*?`);
     } else if (msg === '5' || msg === 'support') {
@@ -396,7 +452,6 @@ export class BotService {
     const fm = pricing.FREQ_MULT as Record<string, number>;
     const total = s.data.estimate ?? Math.round((bp[service] ?? 80) * (sm[size] ?? 1) * (fm[freq] ?? 1));
 
-    // Create lead in admin
     try {
       await this.leadsService.create({
         name: name || senderName, email, phone,
@@ -409,7 +464,6 @@ export class BotService {
       this.logger.error(`[Bot] Failed to create lead: ${err}`);
     }
 
-    // Create inbox thread
     try {
       const inboxMsg = await this.inboxService.create({
         senderName: name || senderName, senderEmail: email, senderPhone: phone,
@@ -458,10 +512,10 @@ export class BotService {
       [{
         title: 'Frequency',
         rows: [
-          { id: '1', title: 'One-Off',        description: 'Single visit' },
-          { id: '2', title: 'Weekly',          description: 'Save 20%' },
-          { id: '3', title: 'Fortnightly',     description: 'Save 15%' },
-          { id: '4', title: 'Monthly',         description: 'Save 10%' },
+          { id: '1', title: 'One-Off',       description: 'Single visit' },
+          { id: '2', title: 'Weekly',         description: 'Save 20%' },
+          { id: '3', title: 'Fortnightly',    description: 'Save 15%' },
+          { id: '4', title: 'Monthly',        description: 'Save 10%' },
         ],
       }],
     );
@@ -507,7 +561,6 @@ export class BotService {
       }
     }
 
-    // No FAQ match — escalate
     await this.wa.sendText(from, `🤔 Let me connect you with a customer support rep.\n\n_Please hold on..._`);
     await this.connectToAgent(s, from, senderName);
   }
@@ -532,8 +585,33 @@ export class BotService {
 
     await this.wa.sendText(
       from,
-      `👤 *You're now connected with our customer support team!*\n\nA team member will respond shortly. During business hours, we aim to reply within *15 minutes*.\n\n⏰ Business hours: Mon–Sat 8am–6pm\n\n📞 Urgent? Call: *07767 759 013*\n📧 Email: *info@thefamgroup.uk*`,
+      `👤 *You're now connected with our customer support team!*\n\nA team member will respond shortly. During business hours, we aim to reply within *15 minutes*.\n\n⏰ Business hours: Mon–Sat 8am–6pm\n\n📞 Urgent? Call: *07767 759 013*\n📧 Email: *info@thefamgroup.uk*\n\n_Tip: Reply *menu* if you'd like to switch back to the bot._`,
     );
+  }
+
+  // ── Admin: end live chat session ──────────────────────────────────────────
+
+  async endLiveChat(phone: string): Promise<{ ok: boolean; message: string }> {
+    const session = await this.sessionRepo.findOne({ where: { phone } });
+    if (!session || session.state !== 'AGENT') {
+      return { ok: false, message: 'No active live chat session for this number' };
+    }
+    session.state = 'IDLE';
+    session.data = {};
+    session.inboxMessageId = null;
+    await this.sessionRepo.save(session);
+
+    try {
+      await this.wa.sendText(
+        phone,
+        `💬 *Chat closed*\n\nOur team member has finished this conversation. We hope we were helpful!\n\nReply *menu* anytime to use our bot, or call *07767 759 013* if you need more help. 😊`,
+      );
+    } catch (err) {
+      this.logger.warn(`[Bot] Could not send end-chat message to ${phone}: ${err}`);
+    }
+
+    this.logger.log(`[Bot] Live chat ended for ${phone} by admin`);
+    return { ok: true, message: `Live chat ended for ${phone}` };
   }
 
   // ── Employee commands ─────────────────────────────────────────────────────

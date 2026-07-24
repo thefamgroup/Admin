@@ -62,11 +62,11 @@ const COLUMNS: {
   headerBg: string
   dot: string
 }[] = [
-  { status: 'new',       label: 'New',       color: 'text-slate-600',  headerBg: 'bg-slate-100',  dot: 'bg-slate-400'  },
-  { status: 'contacted', label: 'Contacted', color: 'text-amber-700',  headerBg: 'bg-amber-50',   dot: 'bg-amber-400'  },
-  { status: 'quoted',    label: 'Quoted',    color: 'text-violet-700', headerBg: 'bg-violet-50',  dot: 'bg-violet-500' },
-  { status: 'won',       label: 'Won',       color: 'text-green-700',  headerBg: 'bg-green-50',   dot: 'bg-green-500'  },
-  { status: 'lost',      label: 'Lost',      color: 'text-red-600',    headerBg: 'bg-red-50',     dot: 'bg-red-400'    },
+  { status: 'new',       label: 'New',       color: 'text-slate-300',  headerBg: 'bg-slate-500/15',  dot: 'bg-slate-400'  },
+  { status: 'contacted', label: 'Contacted', color: 'text-amber-300',  headerBg: 'bg-amber-500/15',  dot: 'bg-amber-400'  },
+  { status: 'quoted',    label: 'Quoted',    color: 'text-violet-300', headerBg: 'bg-violet-500/15', dot: 'bg-violet-400' },
+  { status: 'won',       label: 'Won',       color: 'text-green-400',  headerBg: 'bg-green-500/15',  dot: 'bg-green-500'  },
+  { status: 'lost',      label: 'Lost',      color: 'text-red-400',    headerBg: 'bg-red-500/15',    dot: 'bg-red-400'    },
 ]
 
 const STATUS_ORDER: LeadStatus[] = ['new', 'contacted', 'quoted', 'won', 'lost']
@@ -74,11 +74,11 @@ const STATUS_ORDER: LeadStatus[] = ['new', 'contacted', 'quoted', 'won', 'lost']
 const SOURCES: LeadSource[] = ['website', 'whatsapp', 'email', 'phone', 'referral']
 
 const SOURCE_STYLE: Record<LeadSource, string> = {
-  website:  'bg-blue-100 text-blue-700',
-  whatsapp: 'bg-emerald-100 text-emerald-700',
-  email:    'bg-purple-100 text-purple-700',
-  phone:    'bg-orange-100 text-orange-700',
-  referral: 'bg-teal-100 text-teal-700',
+  website:  'bg-blue-500/15 text-blue-400',
+  whatsapp: 'bg-emerald-500/15 text-emerald-400',
+  email:    'bg-purple-500/15 text-purple-400',
+  phone:    'bg-orange-500/15 text-orange-400',
+  referral: 'bg-teal-500/15 text-teal-400',
 }
 
 const EMPTY_FORM = {
@@ -102,18 +102,18 @@ function colPipelineValue(leads: Lead[]) {
 
 function CardPreview({ lead }: { lead: Lead }) {
   return (
-    <div className="w-64 rotate-1 rounded-xl border border-gray-200 bg-white p-3 shadow-2xl">
+    <div className="w-64 rotate-1 rounded-xl border border-border bg-card p-3 shadow-2xl">
       <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 text-xs font-bold text-green-400">
           {getInitials(lead.name)}
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{lead.name}</p>
-          {lead.phone && <p className="text-xs text-gray-400">{lead.phone}</p>}
+          {lead.phone && <p className="text-xs text-muted-foreground">{lead.phone}</p>}
         </div>
       </div>
       {lead.estimatedValue && (
-        <p className="mt-1.5 text-xs font-semibold text-green-600">
+        <p className="mt-1.5 text-xs font-semibold text-green-400">
           £{Number(lead.estimatedValue).toFixed(0)}
         </p>
       )}
@@ -154,14 +154,14 @@ function DraggableCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="group rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+      className="group rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md"
     >
       {/* drag handle + edit/delete */}
       <div className="flex items-center justify-between px-3 pt-2.5">
         <div
           {...listeners}
           {...attributes}
-          className="cursor-grab rounded p-0.5 text-gray-300 hover:text-gray-400 active:cursor-grabbing"
+          className="cursor-grab rounded p-0.5 text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing"
           title="Drag to move between columns"
         >
           <GripVertical className="h-3.5 w-3.5" />
@@ -169,14 +169,14 @@ function DraggableCard({
         <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
           <button
             onClick={() => onEdit(lead)}
-            className="rounded p-1 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-blue-500/10 hover:text-blue-400"
             title="Edit lead"
           >
             <Pencil className="h-3 w-3" />
           </button>
           <button
             onClick={() => onDelete(lead)}
-            className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-400"
             title="Delete lead"
           >
             <Trash2 className="h-3 w-3" />
@@ -187,7 +187,7 @@ function DraggableCard({
       <div className="space-y-2 px-3 pb-3 pt-1">
         {/* avatar + name + source */}
         <div className="flex items-start gap-2.5">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-500/15 text-xs font-bold text-green-400">
             {getInitials(lead.name)}
           </div>
           <div className="min-w-0 flex-1">
@@ -200,19 +200,19 @@ function DraggableCard({
 
         {/* contact info */}
         {lead.phone && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Phone className="h-3 w-3 flex-shrink-0" />
             <span>{lead.phone}</span>
           </div>
         )}
         {lead.email && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Mail className="h-3 w-3 flex-shrink-0" />
             <span className="truncate">{lead.email}</span>
           </div>
         )}
         {lead.address && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <MapPin className="h-3 w-3 flex-shrink-0" />
             <span className="line-clamp-1">{lead.address}</span>
           </div>
@@ -222,12 +222,12 @@ function DraggableCard({
         {(lead.serviceInterest || lead.estimatedValue) && (
           <div className="flex items-center justify-between gap-2">
             {lead.serviceInterest && (
-              <span className="truncate rounded-md bg-gray-100 px-1.5 py-0.5 text-xs capitalize text-gray-600">
+              <span className="truncate rounded-md bg-secondary px-1.5 py-0.5 text-xs capitalize text-muted-foreground">
                 {lead.serviceInterest}
               </span>
             )}
             {lead.estimatedValue && (
-              <span className="flex-shrink-0 text-xs font-semibold text-green-600">
+              <span className="flex-shrink-0 text-xs font-semibold text-green-400">
                 £{Number(lead.estimatedValue).toFixed(0)}
               </span>
             )}
@@ -235,17 +235,17 @@ function DraggableCard({
         )}
 
         {lead.notes && (
-          <p className="line-clamp-2 text-xs italic text-gray-400">{lead.notes}</p>
+          <p className="line-clamp-2 text-xs italic text-muted-foreground/70">{lead.notes}</p>
         )}
 
-        <p className="text-xs text-gray-400">{formatDate(lead.createdAt)}</p>
+        <p className="text-xs text-muted-foreground/60">{formatDate(lead.createdAt)}</p>
 
         {/* primary CTAs */}
         <div className="space-y-1.5 pt-0.5">
           {lead.status === 'new' && (
             <button
               onClick={() => onStatusChange(lead.id, 'contacted')}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/20"
             >
               <Phone className="h-3 w-3" /> Mark as Contacted
             </button>
@@ -253,7 +253,7 @@ function DraggableCard({
           {(lead.status === 'new' || lead.status === 'contacted') && (
             <button
               onClick={() => onStatusChange(lead.id, 'quoted')}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-2 py-1.5 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-2 py-1.5 text-xs font-medium text-violet-400 transition-colors hover:bg-violet-500/20"
             >
               <FileText className="h-3 w-3" /> Send Quote
             </button>
@@ -262,7 +262,7 @@ function DraggableCard({
             <button
               onClick={() => onMarkWon(lead.id)}
               disabled={isBusy}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-2 py-1.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-100 disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 px-2 py-1.5 text-xs font-medium text-green-400 transition-colors hover:bg-green-500/20 disabled:opacity-60"
             >
               {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
               Mark Won (Payment Received)
@@ -281,7 +281,7 @@ function DraggableCard({
           {lead.status === 'lost' && (
             <button
               onClick={() => onStatusChange(lead.id, 'new')}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary"
             >
               <RotateCcw className="h-3 w-3" /> Re-activate
             </button>
@@ -293,7 +293,7 @@ function DraggableCard({
           {prevStatus && lead.status !== 'won' && lead.status !== 'lost' && (
             <button
               onClick={() => onStatusChange(lead.id, prevStatus)}
-              className="flex flex-1 items-center justify-center gap-0.5 rounded-lg border border-gray-200 py-1 text-xs text-gray-400 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-600"
+              className="flex flex-1 items-center justify-center gap-0.5 rounded-lg border border-border py-1 text-xs text-muted-foreground/60 transition-colors hover:border-border hover:bg-secondary hover:text-muted-foreground"
               title={`Move back to ${prevStatus}`}
             >
               <ChevronLeft className="h-3 w-3" /> Back
@@ -302,7 +302,7 @@ function DraggableCard({
           {(lead.status === 'new' || lead.status === 'contacted' || lead.status === 'quoted') && (
             <button
               onClick={() => onStatusChange(lead.id, 'lost')}
-              className="flex flex-1 items-center justify-center gap-0.5 rounded-lg border border-red-100 py-1 text-xs text-red-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+              className="flex flex-1 items-center justify-center gap-0.5 rounded-lg border border-red-500/20 py-1 text-xs text-red-400 transition-colors hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400"
             >
               Mark Lost <ChevronRight className="h-3 w-3" />
             </button>
@@ -339,7 +339,7 @@ function DroppableColumn({
         </div>
         <div className="flex items-center gap-2">
           {pipelineValue && (
-            <span className="text-xs font-medium text-green-600">{pipelineValue}</span>
+            <span className="text-xs font-medium text-green-400">{pipelineValue}</span>
           )}
           <span className={`rounded-full border border-current/20 px-2 py-0.5 text-xs font-semibold ${col.color}`}>
             {leads.length}
@@ -352,13 +352,13 @@ function DroppableColumn({
         ref={setNodeRef}
         className={`min-h-32 flex-1 space-y-2.5 rounded-xl p-2 transition-colors ${
           isOver
-            ? 'bg-green-50/60 outline-dashed outline-2 outline-green-300'
-            : 'bg-gray-50/50'
+            ? 'bg-green-500/10 outline-dashed outline-2 outline-green-500/40'
+            : 'bg-secondary/10'
         }`}
       >
         {leads.length === 0 && !isOver && (
-          <div className="flex h-24 items-center justify-center rounded-lg border-2 border-dashed border-gray-200">
-            <p className="text-xs text-gray-400">Drop here</p>
+          <div className="flex h-24 items-center justify-center rounded-lg border-2 border-dashed border-border">
+            <p className="text-xs text-muted-foreground/50">Drop here</p>
           </div>
         )}
         {children}
@@ -658,7 +658,7 @@ export default function LeadsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <p className="hidden text-xs text-gray-400 sm:block">
+          <p className="hidden text-xs text-muted-foreground/60 sm:block">
             Drag cards between columns or use the buttons to update status
           </p>
           <Button onClick={() => setAdding(true)}>

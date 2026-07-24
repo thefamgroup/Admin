@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   MailOpen, Inbox as InboxIcon, Send, MessageCircle,
-  UserCheck, BookOpen, RefreshCw,
+  UserCheck, BookOpen, RefreshCw, PhoneOff,
 } from 'lucide-react'
 
-import { inboxApi, contextApi, teamApi } from '@/lib/api/client'
+import { inboxApi, contextApi, teamApi, whatsappApi } from '@/lib/api/client'
 import { formatDateTime, initials, cn } from '@/lib/utils'
 import type { Message, TeamMember, Lead, Booking } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -44,6 +44,7 @@ export default function InboxPage() {
   const [replyText, setReplyText]     = useState('')
   const [sending, setSending]         = useState(false)
   const [replyStatus, setReplyStatus] = useState<'idle' | 'sent' | 'failed'>('idle')
+  const [endingChat, setEndingChat]   = useState(false)
   const [team, setTeam]               = useState<TeamMember[]>([])
   const [ctxLeads, setCtxLeads]       = useState<Lead[]>([])
   const [ctxBookings, setCtxBookings] = useState<Booking[]>([])
@@ -109,6 +110,20 @@ export default function InboxPage() {
       else setReplyStatus('failed')
     } catch { setReplyStatus('failed') }
     finally { setSending(false) }
+  }
+
+  // ── End Live Chat ──────────────────────────────────────────────────────────
+  const endLiveChat = async () => {
+    if (!selected) return
+    const phone = (selected as any).waFrom
+    if (!phone) return
+    if (!confirm(`End live chat with ${selected.senderName}? They'll be returned to the bot and notified.`)) return
+    setEndingChat(true)
+    try {
+      await whatsappApi.endLiveChat(phone)
+      load(true)
+    } catch { /* ignore — session may already be ended */ }
+    finally { setEndingChat(false) }
   }
 
   // ── Assign ─────────────────────────────────────────────────────────────────
@@ -194,6 +209,18 @@ export default function InboxPage() {
                   <Badge variant={SOURCE_COLOURS[selected.source] ?? 'grey'} className="capitalize">
                     {selected.source}
                   </Badge>
+                  {isWhatsApp && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={endLiveChat}
+                      disabled={endingChat}
+                      title="End live chat — returns customer to bot"
+                    >
+                      <PhoneOff className="h-3.5 w-3.5" />
+                      {endingChat ? 'Ending…' : 'End Chat'}
+                    </Button>
+                  )}
                   {selected.status === 'unread' && (
                     <Button size="sm" variant="outline" onClick={() => markRead(selected.id)}>
                       <MailOpen className="h-3.5 w-3.5" /> Read

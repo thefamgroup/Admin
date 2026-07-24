@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Query, Res, Logger } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Param, Body, Query, Res, Logger, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { BotService } from './bot.service';
 
 @ApiTags('whatsapp')
@@ -76,5 +77,14 @@ export class WhatsAppController {
     } catch (err) {
       this.logger.error(`[WA] Webhook processing error: ${err}`);
     }
+  }
+
+  // Admin: end a live chat session for a customer (JWT protected)
+  @Patch('session/:phone/end')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'End a live WhatsApp chat session and return customer to bot' })
+  endLiveChat(@Param('phone') phone: string) {
+    return this.bot.endLiveChat(decodeURIComponent(phone));
   }
 }

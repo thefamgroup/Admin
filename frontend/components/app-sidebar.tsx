@@ -36,7 +36,6 @@ const NAV = [
   { href: '/admin/inbox',    label: 'Inbox',      icon: MessageSquare,   permission: 'inbox' },
   { href: '/admin/team',     label: 'Team',       icon: UserCog,         permission: 'team' },
   { href: '/admin/settings', label: 'Settings',   icon: Settings2,       permission: 'settings' },
-  { href: '/admin/users',    label: 'Users',      icon: Users2,          permission: 'users' },
 ]
 
 export function AppSidebar() {
