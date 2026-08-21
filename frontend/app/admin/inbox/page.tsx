@@ -68,9 +68,9 @@ export default function InboxPage() {
     teamApi.list().then(setTeam).catch(() => {})
   }, [load])
 
-  // Auto-refresh every 8 seconds
+  // Auto-refresh every 2 seconds
   useEffect(() => {
-    const id = setInterval(() => load(true), 8000)
+    const id = setInterval(() => load(true), 2000)
     return () => clearInterval(id)
   }, [load])
 
@@ -147,7 +147,7 @@ export default function InboxPage() {
               <Badge variant="blue" className="text-xs">{unreadCount} unread</Badge>
             )}
           </h1>
-          <p className="text-muted-foreground">{messages.length} messages · auto-refreshes every 8s</p>
+          <p className="text-muted-foreground">{messages.length} messages · auto-refreshes every 2s</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => load()}>
           <RefreshCw className="h-3.5 w-3.5" /> Refresh

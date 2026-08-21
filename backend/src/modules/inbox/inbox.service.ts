@@ -70,6 +70,18 @@ export class InboxService {
     return this.repo.count({ where: { status: MessageStatus.UNREAD } });
   }
 
+  async findOrCreateThread(waFrom: string, dto: CreateMessageDto): Promise<Message> {
+    const existing = await this.repo.findOne({
+      where: [
+        { waFrom, status: MessageStatus.UNREAD },
+        { waFrom, status: MessageStatus.READ },
+      ],
+      order: { createdAt: 'DESC' },
+    });
+    if (existing) return existing;
+    return this.create(dto);
+  }
+
   async appendToThread(messageId: string, text: string): Promise<void> {
     try {
       const m = await this.findOne(messageId);

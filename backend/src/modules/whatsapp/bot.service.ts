@@ -164,9 +164,20 @@ export class BotService {
         return;
       }
       // Every other message (including "hi", "hello", "help") → forward to thread
-      if (session.inboxMessageId) {
-        await this.inboxService.appendToThread(session.inboxMessageId, `[Customer]: ${text}`);
+      if (!session.inboxMessageId) {
+        // Relink to existing open thread if session lost its reference
+        const existing = await this.inboxService.findOrCreateThread(from, {
+          senderName: senderName,
+          senderPhone: from,
+          source: MessageSource.WHATSAPP,
+          waFrom: from,
+          subject: `WhatsApp Live Chat — ${senderName || from}`,
+          body: `Customer continued conversation.\n\nWhatsApp: ${from}\nName: ${senderName || 'Unknown'}`,
+        });
+        session.inboxMessageId = existing.id;
+        await this.save(session);
       }
+      await this.inboxService.appendToThread(session.inboxMessageId, `[Customer]: ${text}`);
       return;
     }
 
@@ -567,7 +578,7 @@ export class BotService {
 
   private async connectToAgent(s: WaSession, from: string, senderName: string): Promise<void> {
     try {
-      const inboxMsg = await this.inboxService.create({
+      const inboxMsg = await this.inboxService.findOrCreateThread(from, {
         senderName: senderName || from,
         senderPhone: from,
         source: MessageSource.WHATSAPP,
@@ -577,7 +588,7 @@ export class BotService {
       });
       s.inboxMessageId = inboxMsg.id;
     } catch (err) {
-      this.logger.error(`[Bot] Failed to create agent inbox thread: ${err}`);
+      this.logger.error(`[Bot] Failed to find or create agent inbox thread: ${err}`);
     }
 
     s.state = 'AGENT';
