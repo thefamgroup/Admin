@@ -258,6 +258,19 @@ export default function InboxPage() {
               <ScrollArea className="flex-1 p-4">
                 {selected.subject && <h2 className="mb-2 font-medium">{selected.subject}</h2>}
                 <p className="whitespace-pre-wrap text-sm leading-relaxed">{selected.body}</p>
+                {replyText.trim() && (
+                  <div className="mt-4 flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 rounded-2xl bg-brand-500 px-3 py-2 text-xs text-white shadow-sm">
+                      <span className="font-medium">You</span>
+                      <span className="flex gap-0.5">
+                        <span className="animate-bounce" style={{ animationDelay: '0ms' }}>·</span>
+                        <span className="animate-bounce" style={{ animationDelay: '150ms' }}>·</span>
+                        <span className="animate-bounce" style={{ animationDelay: '300ms' }}>·</span>
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">typing…</span>
+                  </div>
+                )}
               </ScrollArea>
 
               {/* Reply box */}
