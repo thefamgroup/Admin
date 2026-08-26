@@ -36,21 +36,24 @@ export class AuthService implements OnModuleInit {
 
   async onModuleInit() {
     const email = this.config.get<string>('ADMIN_EMAIL', 'admin@thefamgroup.uk');
+    const password = this.config.get<string>('ADMIN_PASSWORD', 'Admin@123!');
 
-    // Migrate legacy seed email if it still exists
-    const legacy = await this.userRepo.findOne({ where: { email: 'admin@thefamgroup.co.uk' } });
-    if (legacy && legacy.email !== email) {
-      await this.userRepo.update(legacy.id, { email, permissions: ALL_PERMISSIONS });
-      this.logger.log(`Admin email migrated: admin@thefamgroup.co.uk → ${email}`);
+    // Migrate any previous seed email to the currently configured one
+    const legacyEmails = ['admin@thefamgroup.co.uk', 'admin@thefamgroup.uk'];
+    for (const old of legacyEmails) {
+      if (old === email) continue;
+      const legacy = await this.userRepo.findOne({ where: { email: old } });
+      if (legacy) {
+        await this.userRepo.update(legacy.id, { email, permissions: ALL_PERMISSIONS });
+        this.logger.log(`Admin email migrated: ${old} → ${email}`);
+      }
     }
 
     const exists = await this.userRepo.findOne({ where: { email } });
     if (!exists) {
-      const password = this.config.get<string>('ADMIN_PASSWORD', 'Admin@123!');
       await this.createUser({ email, password, firstName: 'Admin', lastName: 'FAM', role: UserRole.ADMIN, permissions: ALL_PERMISSIONS });
       this.logger.log(`Admin user seeded: ${email}`);
     } else if (!exists.permissions?.length) {
-      // Backfill permissions for existing admin
       await this.userRepo.update(exists.id, { permissions: ALL_PERMISSIONS });
       this.logger.log(`Admin permissions backfilled for ${email}`);
     }
