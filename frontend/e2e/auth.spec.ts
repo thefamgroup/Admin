@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const ADMIN_EMAIL = process.env.E2E_EMAIL || 'admin@thefamgroup.uk'
+const ADMIN_EMAIL = process.env.E2E_EMAIL || 'thefamgrouphq@gmail.com'
 const ADMIN_PASSWORD = process.env.E2E_PASSWORD || 'Admin@TFG2026!'
 
 test.describe('Authentication', () => {

@@ -14,7 +14,7 @@ describe('AuthController (integration)', () => {
 
   const validUser = {
     id: 'uuid-1',
-    email: 'admin@thefamgroup.co.uk',
+    email: 'thefamgrouphq@gmail.com',
     firstName: 'Admin',
     lastName: 'FAM',
     role: 'admin',
@@ -64,7 +64,7 @@ describe('AuthController (integration)', () => {
 
     return request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: 'admin@thefamgroup.co.uk', password: 'Admin@123!' })
+      .send({ email: 'thefamgrouphq@gmail.com', password: 'Admin@123!' })
       .expect(201)
       .expect((res) => {
         expect(res.body.accessToken).toBe('jwt.token.here');
@@ -79,7 +79,7 @@ describe('AuthController (integration)', () => {
 
     return request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: 'admin@thefamgroup.co.uk', password: 'wrongpassword' })
+      .send({ email: 'thefamgrouphq@gmail.com', password: 'wrongpassword' })
       .expect(401);
   });
 
@@ -97,7 +97,7 @@ describe('AuthController (integration)', () => {
   it('POST /api/auth/login with missing fields -> 400', async () => {
     return request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: 'admin@thefamgroup.co.uk' })
+      .send({ email: 'thefamgrouphq@gmail.com' })
       .expect(400);
   });
 
