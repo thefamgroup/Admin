@@ -27,10 +27,22 @@ export class InboxService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    // Add updatedAt column if not yet present (one-time migration, idempotent)
+    // Add updatedAt column — idempotent, safe on every restart
     try {
+      // 1. Add nullable column (no default yet so existing rows are NULL)
       await this.repo.query(
-        `ALTER TABLE messages ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()`,
+        `ALTER TABLE messages ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP WITH TIME ZONE`,
+      );
+      // 2. Back-fill existing rows from createdAt so sort order is preserved
+      await this.repo.query(
+        `UPDATE messages SET "updatedAt" = "createdAt" WHERE "updatedAt" IS NULL`,
+      );
+      // 3. Lock in NOT NULL + default for future inserts
+      await this.repo.query(
+        `ALTER TABLE messages ALTER COLUMN "updatedAt" SET NOT NULL`,
+      );
+      await this.repo.query(
+        `ALTER TABLE messages ALTER COLUMN "updatedAt" SET DEFAULT NOW()`,
       );
       this.logger.log('[InboxService] messages.updatedAt column ready');
     } catch (err) {
