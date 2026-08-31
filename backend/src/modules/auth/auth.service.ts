@@ -35,8 +35,19 @@ export class AuthService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    const email = this.config.get<string>('ADMIN_EMAIL', 'admin@thefamgroup.uk');
-    const password = this.config.get<string>('ADMIN_PASSWORD', 'Admin@123!');
+    // .trim() guards against copy-paste newlines in Render/Heroku env var dashboards
+    const email = this.config.get<string>('ADMIN_EMAIL', 'admin@thefamgroup.uk').trim();
+    const password = this.config.get<string>('ADMIN_PASSWORD', 'Admin@123!').trim();
+
+    // Remove any dirty duplicate created with whitespace in the email (e.g. trailing \n)
+    const dirty = await this.userRepo
+      .createQueryBuilder('u')
+      .where('TRIM(u.email) = :email AND u.email != :email', { email })
+      .getMany();
+    for (const d of dirty) {
+      await this.userRepo.remove(d);
+      this.logger.warn(`Removed duplicate user with whitespace email: "${d.email}"`);
+    }
 
     // Migrate any previous seed email to the currently configured one
     const legacyEmails = ['admin@thefamgroup.co.uk', 'admin@thefamgroup.uk'];
