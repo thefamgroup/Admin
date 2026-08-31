@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { Message, MessageStatus } from './entities/message.entity';
 import { CreateMessageDto, UpdateMessageDto } from './dto/message.dto';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { InboxGateway } from './inbox.gateway';
 
 @Injectable()
 export class InboxService {
@@ -18,6 +19,7 @@ export class InboxService {
     @Inject(forwardRef(() => WhatsAppService))
     private wa: WhatsAppService,
     config: ConfigService,
+    private readonly gateway: InboxGateway,
   ) {
     this.adminEmail  = config.get('ADMIN_EMAIL', 'info@thefamgroup.uk');
     this.resendKey   = config.get('RESEND_API_KEY', '');
@@ -49,6 +51,13 @@ export class InboxService {
   async create(dto: CreateMessageDto) {
     const msg = await this.repo.save(this.repo.create(dto));
     this.sendEmailNotification(msg).catch(() => {});
+    this.gateway.ping();
+    this.gateway
+      .sendPush(
+        `New message from ${msg.senderName}`,
+        msg.body?.slice(0, 120) ?? '',
+      )
+      .catch(() => {});
     return msg;
   }
 
@@ -87,6 +96,7 @@ export class InboxService {
       const m = await this.findOne(messageId);
       m.body = `${m.body}\n\n---\n${text}`;
       await this.repo.save(m);
+      this.gateway.ping();
     } catch {
       // Message may have been deleted — ignore
     }

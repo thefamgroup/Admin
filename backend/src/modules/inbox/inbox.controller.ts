@@ -6,6 +6,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { IsString } from 'class-validator';
 import { ConfigService } from '@nestjs/config';
 import { InboxService } from './inbox.service';
+import { InboxGateway } from './inbox.gateway';
 import { CreateMessageDto, UpdateMessageDto } from './dto/message.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MessageStatus } from './entities/message.entity';
@@ -21,6 +22,7 @@ export class InboxController {
 
   constructor(
     private readonly svc: InboxService,
+    private readonly gateway: InboxGateway,
     config: ConfigService,
   ) {
     this.internalKey = config.get('INTERNAL_API_KEY', '');
@@ -38,6 +40,20 @@ export class InboxController {
       throw new ForbiddenException('Invalid API key');
     }
     return this.svc.create(dto);
+  }
+
+  /** Returns the VAPID public key so the browser can subscribe to push */
+  @Get('push-public-key')
+  getPushPublicKey() {
+    return { publicKey: this.gateway.getVapidPublicKey() };
+  }
+
+  /** Store a browser push subscription (JWT protected) */
+  @ApiBearerAuth() @UseGuards(JwtAuthGuard)
+  @Post('push-subscribe')
+  subscribePush(@Body() sub: Record<string, unknown>) {
+    this.gateway.addPushSubscription(sub as any);
+    return { ok: true };
   }
 
   @ApiBearerAuth() @UseGuards(JwtAuthGuard)

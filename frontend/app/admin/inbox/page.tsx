@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   MailOpen, Inbox as InboxIcon, Send, MessageCircle,
-  UserCheck, BookOpen, RefreshCw, PhoneOff, ArrowLeft,
+  UserCheck, BookOpen, RefreshCw, PhoneOff, ArrowLeft, Bell, BellOff,
 } from 'lucide-react'
+import { io } from 'socket.io-client'
 
 import { inboxApi, contextApi, teamApi, whatsappApi } from '@/lib/api/client'
 import { formatDateTime, initials, cn } from '@/lib/utils'
@@ -22,7 +23,11 @@ const SOURCE_COLOURS: Record<string, 'green' | 'grey' | 'amber'> = {
   whatsapp: 'green', web: 'grey', email: 'amber',
 }
 
-// ── Notification sound (Web Audio API — no package needed) ────────────────────
+// Derive socket server URL from the REST API URL (strip the /api suffix)
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
+const WS_BASE = API_URL.replace(/\/api\/?$/, '')
+
+// ── Notification sound (Web Audio API) ───────────────────────────────────────
 function playNotificationSound() {
   try {
     const ctx = new AudioContext()
@@ -38,6 +43,49 @@ function playNotificationSound() {
   } catch { /* AudioContext blocked before user gesture — silent fail */ }
 }
 
+// ── Convert VAPID public key to Uint8Array for push subscription ──────────────
+function urlB64ToUint8Array(base64String: string): ArrayBuffer {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(base64)
+  const arr = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i)
+  return arr.buffer as ArrayBuffer
+}
+
+// ── Register service worker + subscribe to push ───────────────────────────────
+async function enablePushNotifications(): Promise<boolean> {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false
+  try {
+    const keyRes = await fetch(`${API_URL}/inbox/push-public-key`)
+    if (!keyRes.ok) return false
+    const { publicKey } = await keyRes.json()
+    if (!publicKey) return false
+
+    const reg = await navigator.serviceWorker.register('/sw.js')
+    await navigator.serviceWorker.ready
+
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlB64ToUint8Array(publicKey),
+    })
+
+    const token = document.cookie.match(/tfg_token=([^;]+)/)?.[1] ?? ''
+    await fetch(`${API_URL}/inbox/push-subscribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(sub.toJSON()),
+    })
+    return true
+  } catch (err) {
+    console.error('[Push] subscribe failed:', err)
+    return false
+  }
+}
+
 export default function InboxPage() {
   const [messages, setMessages]       = useState<Message[]>([])
   const [selectedId, setSelectedId]   = useState<string | null>(null)
@@ -48,6 +96,8 @@ export default function InboxPage() {
   const [team, setTeam]               = useState<TeamMember[]>([])
   const [ctxLeads, setCtxLeads]       = useState<Lead[]>([])
   const [ctxBookings, setCtxBookings] = useState<Booking[]>([])
+  const [wsConnected, setWsConnected] = useState(false)
+  const [notifPerm, setNotifPerm]     = useState<NotificationPermission>('default')
   const prevUnread = useRef(0)
   const replyRef = useRef<HTMLTextAreaElement>(null)
 
@@ -56,22 +106,40 @@ export default function InboxPage() {
     try {
       const data = await inboxApi.list()
       const unread = data.filter((m) => m.status === 'unread').length
-      if (!silent && unread > prevUnread.current) playNotificationSound()
+      if (!silent && unread > prevUnread.current) {
+        playNotificationSound()
+        // Foreground browser notification
+        if (Notification.permission === 'granted') {
+          new Notification('thefamgroup Inbox', {
+            body: `${unread} unread message${unread > 1 ? 's' : ''}`,
+            icon: '/favicon.ico',
+            tag: 'inbox-unread',
+          })
+        }
+      }
       prevUnread.current = unread
       setMessages(data)
     } catch { /* ignore */ }
   }, [])
 
-  // Initial load + team
+  // ── Initial load + team ────────────────────────────────────────────────────
   useEffect(() => {
     load()
     teamApi.list().then(setTeam).catch(() => {})
+    if ('Notification' in window) setNotifPerm(Notification.permission)
   }, [load])
 
-  // Auto-refresh every 2 seconds
+  // ── WebSocket real-time updates ────────────────────────────────────────────
   useEffect(() => {
-    const id = setInterval(() => load(true), 2000)
-    return () => clearInterval(id)
+    const socket = io(WS_BASE, {
+      transports: ['websocket', 'polling'],
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    })
+    socket.on('connect', () => setWsConnected(true))
+    socket.on('disconnect', () => setWsConnected(false))
+    socket.on('inbox:ping', () => load(false))
+    return () => { socket.disconnect() }
   }, [load])
 
   const selected = messages.find((m) => m.id === selectedId) ?? null
@@ -134,12 +202,21 @@ export default function InboxPage() {
     load(true)
   }
 
+  // ── Enable browser / push notifications ───────────────────────────────────
+  const handleEnableNotifications = async () => {
+    const perm = await Notification.requestPermission()
+    setNotifPerm(perm)
+    if (perm === 'granted') {
+      await enablePushNotifications()
+    }
+  }
+
   const isWhatsApp = selected?.source === 'whatsapp' && (selected as any).waFrom
   const unreadCount = messages.filter((m) => m.status === 'unread').length
 
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {/* Mobile back button — shown only when a message is open */}
           {selectedId && (
@@ -159,18 +236,43 @@ export default function InboxPage() {
                 <Badge variant="blue" className="text-xs">{unreadCount} unread</Badge>
               )}
             </h1>
-            <p className="text-muted-foreground text-sm">{messages.length} messages · auto-refreshes every 2s</p>
+            <p className="text-muted-foreground text-sm flex items-center gap-1.5">
+              {messages.length} messages
+              <span className={cn(
+                'inline-flex h-1.5 w-1.5 rounded-full',
+                wsConnected ? 'bg-green-500' : 'bg-amber-400 animate-pulse'
+              )} />
+              <span className="text-[11px]">{wsConnected ? 'live' : 'reconnecting…'}</span>
+            </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => load()}>
-          <RefreshCw className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline ml-1">Refresh</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          {'Notification' in window && notifPerm !== 'granted' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEnableNotifications}
+              title="Enable browser push notifications for new messages"
+            >
+              <Bell className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline ml-1">Notifications</span>
+            </Button>
+          )}
+          {'Notification' in window && notifPerm === 'granted' && (
+            <span className="flex items-center gap-1 text-[11px] text-green-600">
+              <BellOff className="h-3.5 w-3.5" /> Notifications on
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={() => load()}>
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline ml-1">Refresh</span>
+          </Button>
+        </div>
       </div>
 
       {/* 3-column layout: list | chat | context */}
       {/* Mobile: show list OR chat (not both). Tablet+: 3-column grid */}
-      <div className="grid h-[calc(100vh-180px)] grid-cols-1 overflow-hidden rounded-lg border md:grid-cols-[280px_1fr_260px]">
+      <div className="grid h-[calc(100vh-200px)] grid-cols-1 overflow-hidden rounded-lg border md:grid-cols-[280px_1fr_260px]">
 
         {/* ── Col 1: Message list — hidden on mobile when a message is open */}
         <ScrollArea className={cn('border-b md:border-b-0 md:border-r', selectedId ? 'hidden md:block' : 'block')}>
