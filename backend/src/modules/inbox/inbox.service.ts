@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject, forwardRef, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -8,7 +8,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { InboxGateway } from './inbox.gateway';
 
 @Injectable()
-export class InboxService {
+export class InboxService implements OnModuleInit {
   private readonly logger = new Logger(InboxService.name);
   private readonly adminEmail: string;
   private readonly resendKey: string;
@@ -26,10 +26,22 @@ export class InboxService {
     this.frontendUrl = config.get('FRONTEND_URL', 'http://localhost:3001');
   }
 
+  async onModuleInit() {
+    // Add updatedAt column if not yet present (one-time migration, idempotent)
+    try {
+      await this.repo.query(
+        `ALTER TABLE messages ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()`,
+      );
+      this.logger.log('[InboxService] messages.updatedAt column ready');
+    } catch (err) {
+      this.logger.warn(`[InboxService] updatedAt migration: ${err}`);
+    }
+  }
+
   findAll(status?: MessageStatus) {
     return this.repo.find({
       where: status ? { status } : {},
-      order: { createdAt: 'DESC' },
+      order: { updatedAt: 'DESC' },
     });
   }
 
@@ -85,7 +97,7 @@ export class InboxService {
         { waFrom, status: MessageStatus.UNREAD },
         { waFrom, status: MessageStatus.READ },
       ],
-      order: { createdAt: 'DESC' },
+      order: { updatedAt: 'DESC' },
     });
     if (existing) return existing;
     return this.create(dto);

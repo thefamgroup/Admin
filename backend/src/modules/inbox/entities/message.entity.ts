@@ -1,5 +1,5 @@
 // entities/message.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 export enum MessageSource { WHATSAPP='whatsapp', EMAIL='email', WEB='web' }
 export enum MessageStatus { UNREAD='unread', READ='read', REPLIED='replied', ARCHIVED='archived' }
@@ -18,4 +18,5 @@ export class Message {
   @Column({ nullable: true }) assignedTo: string;
   @Column({ nullable: true }) waFrom: string; // WhatsApp phone number for reply routing
   @CreateDateColumn() createdAt: Date;
+  @UpdateDateColumn() updatedAt: Date;
 }
