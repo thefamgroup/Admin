@@ -29,8 +29,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-14 items-center gap-2 border-b px-4">
-          <SidebarTrigger />
+        <header className="flex h-14 items-center gap-2 border-b px-4 sticky top-0 z-10 bg-background">
+          <SidebarTrigger className="flex-shrink-0" />
         </header>
         {children}
       </SidebarInset>

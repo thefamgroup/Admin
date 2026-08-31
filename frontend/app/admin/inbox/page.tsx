@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   MailOpen, Inbox as InboxIcon, Send, MessageCircle,
-  UserCheck, BookOpen, RefreshCw, PhoneOff,
+  UserCheck, BookOpen, RefreshCw, PhoneOff, ArrowLeft,
 } from 'lucide-react'
 
 import { inboxApi, contextApi, teamApi, whatsappApi } from '@/lib/api/client'
@@ -138,27 +138,42 @@ export default function InboxPage() {
   const unreadCount = messages.filter((m) => m.status === 'unread').length
 
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            Inbox
-            {unreadCount > 0 && (
-              <Badge variant="blue" className="text-xs">{unreadCount} unread</Badge>
-            )}
-          </h1>
-          <p className="text-muted-foreground">{messages.length} messages · auto-refreshes every 2s</p>
+        <div className="flex items-center gap-2">
+          {/* Mobile back button — shown only when a message is open */}
+          {selectedId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden -ml-1 h-8 w-8 p-0"
+              onClick={() => setSelectedId(null)}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              Inbox
+              {unreadCount > 0 && (
+                <Badge variant="blue" className="text-xs">{unreadCount} unread</Badge>
+              )}
+            </h1>
+            <p className="text-muted-foreground text-sm">{messages.length} messages · auto-refreshes every 2s</p>
+          </div>
         </div>
         <Button variant="outline" size="sm" onClick={() => load()}>
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          <RefreshCw className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline ml-1">Refresh</span>
         </Button>
       </div>
 
       {/* 3-column layout: list | chat | context */}
-      <div className="grid h-[calc(100vh-200px)] grid-cols-1 overflow-hidden rounded-lg border md:grid-cols-[280px_1fr_260px]">
+      {/* Mobile: show list OR chat (not both). Tablet+: 3-column grid */}
+      <div className="grid h-[calc(100vh-180px)] grid-cols-1 overflow-hidden rounded-lg border md:grid-cols-[280px_1fr_260px]">
 
-        {/* ── Col 1: Message list ──────────────────────────────────────── */}
-        <ScrollArea className="border-b md:border-b-0 md:border-r">
+        {/* ── Col 1: Message list — hidden on mobile when a message is open */}
+        <ScrollArea className={cn('border-b md:border-b-0 md:border-r', selectedId ? 'hidden md:block' : 'block')}>
           {messages.length === 0 ? (
             <div className="p-6 text-sm text-muted-foreground">No messages yet</div>
           ) : (
@@ -193,8 +208,8 @@ export default function InboxPage() {
           )}
         </ScrollArea>
 
-        {/* ── Col 2: Chat / detail ─────────────────────────────────────── */}
-        <div className="flex flex-col overflow-hidden border-r">
+        {/* ── Col 2: Chat / detail — hidden on mobile when no message selected */}
+        <div className={cn('flex flex-col overflow-hidden border-r', !selectedId ? 'hidden md:flex' : 'flex')}>
           {selected ? (
             <>
               {/* Header */}
@@ -313,8 +328,8 @@ export default function InboxPage() {
           )}
         </div>
 
-        {/* ── Col 3: Customer context panel ────────────────────────────── */}
-        <div className="flex flex-col overflow-hidden bg-muted/10">
+        {/* ── Col 3: Customer context panel — hidden on mobile always */}
+        <div className="hidden md:flex flex-col overflow-hidden bg-muted/10">
           {selected ? (
             <ScrollArea className="flex-1">
               <div className="p-3 space-y-4">

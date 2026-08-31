@@ -151,8 +151,8 @@ export default function QuotesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Quotes &amp; Invoices</h1>
           <p className="text-muted-foreground">Manage and track quotes</p>
@@ -265,7 +265,8 @@ export default function QuotesPage() {
         <CardHeader>
           <CardTitle className="capitalize">{tab} Quotes</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -354,6 +355,7 @@ export default function QuotesPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

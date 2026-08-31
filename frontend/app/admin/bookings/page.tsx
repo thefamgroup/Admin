@@ -168,13 +168,13 @@ export default function BookingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Bookings</h1>
           <p className="text-muted-foreground">{bookings.length} total bookings</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* View toggle */}
           <div className="flex rounded-md border overflow-hidden">
             <button
@@ -362,10 +362,10 @@ export default function BookingsPage() {
               placeholder="Search client name…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-48"
+              className="w-full sm:w-48"
             />
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -379,11 +379,11 @@ export default function BookingsPage() {
             </Select>
             <div className="flex items-center gap-1">
               <Label className="text-xs text-muted-foreground">From</Label>
-              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36 text-xs" />
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-32 text-xs sm:w-36" />
             </div>
             <div className="flex items-center gap-1">
               <Label className="text-xs text-muted-foreground">To</Label>
-              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36 text-xs" />
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-32 text-xs sm:w-36" />
             </div>
             {(dateFrom || dateTo) && (
               <Button variant="ghost" size="sm" onClick={() => { setDateFrom(''); setDateTo('') }}>
@@ -392,7 +392,8 @@ export default function BookingsPage() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -487,6 +488,7 @@ export default function BookingsPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>}
     </div>
