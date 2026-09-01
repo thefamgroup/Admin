@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { Message, MessageStatus } from './entities/message.entity';
 import { CreateMessageDto, UpdateMessageDto } from './dto/message.dto';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { BotService } from '../whatsapp/bot.service';
 import { InboxGateway } from './inbox.gateway';
 
 @Injectable()
@@ -18,6 +19,8 @@ export class InboxService implements OnModuleInit {
     @InjectRepository(Message) private repo: Repository<Message>,
     @Inject(forwardRef(() => WhatsAppService))
     private wa: WhatsAppService,
+    @Inject(forwardRef(() => BotService))
+    private bot: BotService,
     config: ConfigService,
     private readonly gateway: InboxGateway,
   ) {
@@ -133,6 +136,9 @@ export class InboxService implements OnModuleInit {
     if (sent) {
       await this.appendToThread(messageId, `[Agent reply]: ${replyText}`);
       await this.update(messageId, { status: MessageStatus.REPLIED });
+      // Put the customer's bot session into AGENT mode so their next
+      // WhatsApp reply comes back here instead of hitting the bot menu
+      this.bot.activateAgentMode(m.waFrom, messageId).catch(() => {});
     }
     return { sent };
   }

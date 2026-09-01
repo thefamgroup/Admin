@@ -120,6 +120,18 @@ export class BotService {
     await this.sessionRepo.save(s);
   }
 
+  /** Called by InboxService when admin sends a reply to a WhatsApp customer.
+   *  Puts the customer's session into AGENT mode so their next reply comes
+   *  back to the inbox thread instead of hitting the bot menu. */
+  async activateAgentMode(phone: string, inboxMessageId: string): Promise<void> {
+    const s = await this.getSession(phone);
+    if (s.state === 'AGENT' && s.inboxMessageId) return; // already live — leave it alone
+    s.state = 'AGENT';
+    s.inboxMessageId = inboxMessageId;
+    await this.save(s);
+    this.logger.log(`[Bot] Agent mode activated for ${phone} (thread: ${inboxMessageId})`);
+  }
+
   // ── Entry point ───────────────────────────────────────────────────────────
 
   async handleIncoming(
