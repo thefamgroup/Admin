@@ -208,7 +208,8 @@ export class BotService {
       case 'QUOTE_FREQ':      return this.handleQuoteFreq(s, from, msg);
       case 'QUOTE_NAME':      return this.handleQuoteName(s, from, msg);
       case 'QUOTE_EMAIL':     return this.handleQuoteEmail(s, from, msg);
-      case 'QUOTE_PHONE':     return this.handleQuotePhone(s, from, senderName, msg);
+      case 'QUOTE_PHONE':     return this.handleQuotePhone(s, from, msg);
+      case 'QUOTE_ADDRESS':   return this.handleQuoteAddress(s, from, senderName, msg);
       case 'SUPPORT':         return this.handleSupport(s, from, senderName, msg);
       default:                return this.sendMenu(s, from);
     }
@@ -451,11 +452,20 @@ export class BotService {
     );
   }
 
-  private async handleQuotePhone(
+  private async handleQuotePhone(s: WaSession, from: string, msg: string): Promise<void> {
+    const phone = msg === 'same' ? from : msg;
+    s.data = { ...s.data, phone }; s.state = 'QUOTE_ADDRESS'; await this.save(s);
+    await this.wa.sendText(
+      from,
+      `📍 What is your *full address* including postcode?\n\n_e.g. 14 Oak Street, Manchester, M1 2AB_`,
+    );
+  }
+
+  private async handleQuoteAddress(
     s: WaSession, from: string, senderName: string, msg: string,
   ): Promise<void> {
-    const phone = msg === 'same' ? from : msg;
-    const { service, size, freq, name, email } = s.data;
+    const address = msg.trim();
+    const { service, size, freq, name, email, phone } = s.data;
 
     const pricing = await this.settingsService.getPricingConfig();
     const bp = pricing.BASE_PRICES as Record<string, number>;
@@ -465,7 +475,7 @@ export class BotService {
 
     try {
       await this.leadsService.create({
-        name: name || senderName, email, phone,
+        name: name || senderName, email, phone, address,
         source: LeadSource.WHATSAPP,
         serviceInterest: service,
         estimatedValue: total,
@@ -480,7 +490,7 @@ export class BotService {
         senderName: name || senderName, senderEmail: email, senderPhone: phone,
         source: MessageSource.WHATSAPP, waFrom: from,
         subject: `WhatsApp Quote Request — ${SERVICE_NAMES[service] || service}`,
-        body: `Service: ${SERVICE_NAMES[service] || service}\nSize: ${SIZE_NAMES[size] || size}\nFrequency: ${FREQ_NAMES[freq] || freq}\nEstimate: £${total}\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone}`,
+        body: `Service: ${SERVICE_NAMES[service] || service}\nSize: ${SIZE_NAMES[size] || size}\nFrequency: ${FREQ_NAMES[freq] || freq}\nEstimate: £${total}\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nAddress: ${address}`,
       });
       s.inboxMessageId = inboxMsg.id;
     } catch (err) {
@@ -489,7 +499,7 @@ export class BotService {
 
     await this.wa.sendText(
       from,
-      `✅ *Quote Request Received!*\n\nThank you, ${name}! 🎉\n\nWe'll review your details and get back to you within *2 hours* with a confirmed quote — and we'll send it directly to this WhatsApp.\n\n📋 *Your Summary:*\n• Service: ${SERVICE_NAMES[service] || service}\n• Size: ${SIZE_NAMES[size] || size || 'n/a'}\n• Frequency: ${FREQ_NAMES[freq] || freq || 'n/a'}\n• Estimate: £${total}\n\n📞 Urgent? Call us: *07767 759 013*\n\nReply *menu* at any time to start over.`,
+      `✅ *Quote Request Received!*\n\nThank you, ${name}! 🎉\n\nWe'll review your details and get back to you within *2 hours* with a confirmed quote — and we'll send it directly to this WhatsApp.\n\n📋 *Your Summary:*\n• Service: ${SERVICE_NAMES[service] || service}\n• Size: ${SIZE_NAMES[size] || size || 'n/a'}\n• Frequency: ${FREQ_NAMES[freq] || freq || 'n/a'}\n• Address: ${address}\n• Estimate: £${total}\n\n📞 Urgent? Call us: *07769 240 184*\n\nReply *menu* at any time to start over.`,
     );
 
     await this.reset(s);
