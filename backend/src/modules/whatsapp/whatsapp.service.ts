@@ -216,6 +216,7 @@ export class WhatsAppService implements OnModuleInit {
         this.logger.error(`[WA] Send failed to ${to}: ${JSON.stringify(err)}`);
         return false;
       }
+      this.logger.log(`[WA] Sent ${payload.type} to ${to}`);
       return true;
     } catch (err) {
       this.logger.error(`[WA] Network error sending to ${to}: ${err}`);

@@ -131,7 +131,11 @@ export class InboxService implements OnModuleInit {
 
   async replyViaWhatsApp(messageId: string, replyText: string): Promise<{ sent: boolean }> {
     const m = await this.findOne(messageId);
-    if (!m.waFrom) return { sent: false };
+    if (!m.waFrom) {
+      this.logger.warn(`[Inbox] Reply skipped — no waFrom on message ${messageId}`);
+      return { sent: false };
+    }
+    this.logger.log(`[Inbox] Sending WA reply to ${m.waFrom} (thread: ${messageId})`);
     const sent = await this.wa.sendText(m.waFrom, `💬 *thefamgroup:* ${replyText}`);
     if (sent) {
       await this.appendToThread(messageId, `[Agent reply]: ${replyText}`);
